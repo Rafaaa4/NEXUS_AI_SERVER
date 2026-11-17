@@ -61,6 +61,9 @@ export class AiController {
       if (err.message.includes('NOT_FOUND')) {
         return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: err.message } });
       }
+      if (err.message.includes('PROPOSAL_ALREADY')) {
+        return res.status(400).json({ success: false, error: { code: 'INVALID_STATE', message: err.message } });
+      }
       if (err.message.includes('HASH_MISMATCH') || err.message.includes('COMPROMISED')) {
         return res.status(409).json({
           success: false,

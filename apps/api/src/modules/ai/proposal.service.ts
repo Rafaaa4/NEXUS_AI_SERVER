@@ -54,6 +54,100 @@ export class ProposalService {
     });
   }
 
+  static async generateBaselineProposals(organizationId: string, serverId: string) {
+    const baselines = [
+      {
+        actionType: 'provision.docker',
+        riskLevel: 'low' as ProposalRiskLevel,
+        parameters: {
+          title: 'Docker & Docker Compose Runtime',
+          description: 'Install and start Docker daemon and compose v2 for containerized deployments',
+          enableDaemon: true,
+        },
+      },
+      {
+        actionType: 'provision.ufw_firewall',
+        riskLevel: 'medium' as ProposalRiskLevel,
+        parameters: {
+          title: 'UFW Ingress Firewall Hardening',
+          description: 'Lock down unused ports and allow only SSH (22), HTTP (80), and HTTPS (443)',
+          allowSsh: true,
+          allowHttp: true,
+          allowHttps: true,
+        },
+      },
+      {
+        actionType: 'provision.logs_streamer',
+        riskLevel: 'low' as ProposalRiskLevel,
+        parameters: {
+          title: 'Persistent System Log Collector',
+          description: 'Configure journald log storage and stream system telemetry to NEXUS AI',
+          retentionDays: 7,
+        },
+      },
+      {
+        actionType: 'provision.cleanup_cron',
+        riskLevel: 'low' as ProposalRiskLevel,
+        parameters: {
+          title: 'Automated Daily System Maintenance',
+          description: 'Schedule daily journal vacuum and temporary file purges to prevent disk exhaustion',
+          schedule: 'daily',
+        },
+      },
+      {
+        actionType: 'provision.nginx',
+        riskLevel: 'low' as ProposalRiskLevel,
+        parameters: {
+          title: 'NGINX High-Performance Web Server',
+          description: 'Install and start NGINX HTTP web server on port 80 for websites and reverse proxy routing',
+          enableService: true,
+        },
+      },
+      {
+        actionType: 'provision.python',
+        riskLevel: 'low' as ProposalRiskLevel,
+        parameters: {
+          title: 'Python 3, PIP & Virtualenv Runtime',
+          description: 'Install Python 3 environment, pip package manager, virtualenv, and compilation headers',
+          installPip: true,
+        },
+      },
+      {
+        actionType: 'provision.nodejs',
+        riskLevel: 'low' as ProposalRiskLevel,
+        parameters: {
+          title: 'Node.js, NPM & PM2 Web Runtime',
+          description: 'Install Node.js JavaScript engine, NPM, and PM2 production process supervisor',
+          installPm2: true,
+        },
+      },
+    ];
+
+    const results = [];
+    for (const b of baselines) {
+      const existing = await prisma.actionProposal.findFirst({
+        where: {
+          organizationId,
+          serverId,
+          actionType: b.actionType,
+        },
+      });
+
+      if (!existing) {
+        const p = await this.createProposal({
+          organizationId,
+          serverId,
+          actionType: b.actionType,
+          parameters: b.parameters,
+          riskLevel: b.riskLevel,
+          validityMinutes: 1440, // 24 hours validity
+        });
+        results.push(p);
+      }
+    }
+    return results;
+  }
+
   static async listProposals(organizationId: string, status?: ProposalStatus) {
     const where: any = { organizationId };
     if (status) where.status = status;
@@ -71,6 +165,11 @@ export class ProposalService {
           },
         },
         approvals: true,
+        jobs: {
+          select: { id: true, status: true, result: true },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -90,7 +189,7 @@ export class ProposalService {
       throw new Error('PROPOSAL_NOT_FOUND');
     }
 
-    if (proposal.status !== 'pending') {
+    if (proposal.status !== 'pending' && proposal.status !== 'failed') {
       throw new Error(`PROPOSAL_ALREADY_${proposal.status.toUpperCase()}`);
     }
 
@@ -137,10 +236,20 @@ export class ProposalService {
         },
       });
 
-      // 3. Create execution Job bound to the approved proposal
+      // 3. Create or update execution Job bound to the approved proposal
       const idempotencyKey = `job:${proposal.id}:${proposal.proposalHash}`;
-      const job = await tx.job.create({
-        data: {
+      const job = await tx.job.upsert({
+        where: { idempotencyKey },
+        update: {
+          status: 'queued',
+          result: {
+            parameters: proposal.parameters,
+            approvalId: approval.id,
+            proposalHash: proposal.proposalHash,
+          },
+          finishedAt: null,
+        },
+        create: {
           organizationId,
           serverId: proposal.serverId,
           proposalId: proposal.id,
@@ -182,7 +291,7 @@ export class ProposalService {
       throw new Error('PROPOSAL_NOT_FOUND');
     }
 
-    if (proposal.status !== 'pending') {
+    if (proposal.status !== 'pending' && proposal.status !== 'failed') {
       throw new Error(`PROPOSAL_ALREADY_${proposal.status.toUpperCase()}`);
     }
 

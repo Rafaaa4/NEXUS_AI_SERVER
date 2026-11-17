@@ -31,9 +31,16 @@ export const authenticate = (req: Request, res: Response, next: NextFunction) =>
 
   const token = authHeader.split(' ')[1];
   try {
-    const payload = jwt.verify(token, config.jwtSecret) as { userId: string; email: string };
+    const payload = jwt.verify(token, config.jwtSecret) as { userId?: string; sub?: string; email: string };
+    const id = payload.userId || payload.sub;
+    if (!id) {
+      return res.status(401).json({
+        success: false,
+        error: { code: 'TOKEN_INVALID', message: 'Token payload missing user identifier' },
+      });
+    }
     req.user = {
-      id: payload.userId,
+      id,
       email: payload.email,
     };
     next();

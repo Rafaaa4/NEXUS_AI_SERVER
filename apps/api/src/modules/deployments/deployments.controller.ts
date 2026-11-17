@@ -39,4 +39,67 @@ export class DeploymentsController {
       return res.status(500).json({ success: false, error: { code: 'GET_DEPLOYMENT_FAILED', message: err.message } });
     }
   }
+
+  static async handleWebhook(req: Request, res: Response) {
+    try {
+      const signature = req.headers['x-hub-signature-256'] as string;
+      const result = await DeploymentsService.handleGitHubWebhook(req.body, signature);
+      return res.status(200).json({
+        success: true,
+        message: `CI/CD triggered: ${result.count} deployment(s) queued`,
+        data: result,
+      });
+    } catch (err: any) {
+      return res.status(400).json({ success: false, error: { code: 'WEBHOOK_FAILED', message: err.message } });
+    }
+  }
+
+  static async updateDeployment(req: Request, res: Response) {
+    try {
+      const result = await DeploymentsService.updateDeployment(
+        req.organizationId!,
+        req.params.id,
+        req.body,
+        req.user?.id
+      );
+      return res.status(200).json({ success: true, data: result });
+    } catch (err: any) {
+      if (err.message === 'DEPLOYMENT_NOT_FOUND') {
+        return res.status(404).json({ success: false, error: { code: 'DEPLOYMENT_NOT_FOUND', message: 'Deployment not found' } });
+      }
+      return res.status(500).json({ success: false, error: { code: 'UPDATE_DEPLOYMENT_FAILED', message: err.message } });
+    }
+  }
+
+  static async deleteDeployment(req: Request, res: Response) {
+    try {
+      const result = await DeploymentsService.deleteDeployment(
+        req.organizationId!,
+        req.params.id,
+        req.user?.id
+      );
+      return res.status(200).json({ success: true, data: result });
+    } catch (err: any) {
+      if (err.message === 'DEPLOYMENT_NOT_FOUND') {
+        return res.status(404).json({ success: false, error: { code: 'DEPLOYMENT_NOT_FOUND', message: 'Deployment not found' } });
+      }
+      return res.status(500).json({ success: false, error: { code: 'DELETE_DEPLOYMENT_FAILED', message: err.message } });
+    }
+  }
+
+  static async redeploy(req: Request, res: Response) {
+    try {
+      const result = await DeploymentsService.redeployDeployment(
+        req.organizationId!,
+        req.params.id,
+        req.user?.id
+      );
+      return res.status(200).json({ success: true, data: result });
+    } catch (err: any) {
+      if (err.message === 'DEPLOYMENT_NOT_FOUND') {
+        return res.status(404).json({ success: false, error: { code: 'DEPLOYMENT_NOT_FOUND', message: 'Deployment not found' } });
+      }
+      return res.status(500).json({ success: false, error: { code: 'REDEPLOY_FAILED', message: err.message } });
+    }
+  }
 }

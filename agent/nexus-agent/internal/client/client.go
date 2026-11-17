@@ -228,3 +228,41 @@ func (c *AgentClient) ReportJobResult(jobId string, res *executor.ExecutionResul
 
 	return nil
 }
+type LogEntry struct {
+	Timestamp string `json:"timestamp"`
+	Level     string `json:"level"`
+	Source    string `json:"source"`
+	Message   string `json:"message"`
+}
+
+func (c *AgentClient) SendLogs(logs []LogEntry) error {
+	payload := map[string]interface{}{"logs": logs}
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequest(
+		"POST",
+		fmt.Sprintf("%s/agent/v1/logs", c.cfg.ApiUrl),
+		bytes.NewReader(data),
+	)
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.cfg.AgentSecret))
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("failed to send logs: HTTP %d", resp.StatusCode)
+	}
+
+	return nil
+}

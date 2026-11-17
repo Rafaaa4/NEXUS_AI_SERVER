@@ -81,8 +81,10 @@ class ApiService {
     return localStorage.getItem('nexus_current_org_id');
   }
 
+  private isRefreshing = false;
+
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const token = this.getToken();
+    let token = this.getToken();
     const orgId = this.getOrgId();
 
     const headers: Record<string, string> = {
@@ -98,10 +100,41 @@ class ApiService {
       headers['x-organization-id'] = orgId;
     }
 
-    const response = await fetch(`${this.baseUrl}${endpoint}`, {
+    let response = await fetch(`${this.baseUrl}${endpoint}`, {
       ...options,
       headers,
     });
+
+    if (response.status === 401 && !endpoint.startsWith('/auth/login') && !endpoint.startsWith('/auth/refresh')) {
+      const refreshToken = localStorage.getItem('nexus_refresh_token');
+      if (refreshToken && !this.isRefreshing) {
+        this.isRefreshing = true;
+        try {
+          const res = await fetch(`${this.baseUrl}/auth/refresh`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refreshToken }),
+          });
+          const refreshData = await res.json();
+          if (res.ok && refreshData.success && refreshData.data?.accessToken) {
+            localStorage.setItem('nexus_access_token', refreshData.data.accessToken);
+            if (refreshData.data.refreshToken) {
+              localStorage.setItem('nexus_refresh_token', refreshData.data.refreshToken);
+            }
+            token = refreshData.data.accessToken;
+            headers['Authorization'] = `Bearer ${token}`;
+            response = await fetch(`${this.baseUrl}${endpoint}`, {
+              ...options,
+              headers,
+            });
+          }
+        } catch {
+          // Token refresh failed, continue to standard error throw
+        } finally {
+          this.isRefreshing = false;
+        }
+      }
+    }
 
     const data = await response.json().catch(() => ({}));
 
@@ -146,6 +179,41 @@ class ApiService {
     return this.request<Organization[]>('/organizations');
   }
 
+  async listMembers(orgId: string) {
+    return this.request<{
+      id: string;
+      userId: string;
+      organizationId: string;
+      role: 'owner' | 'admin' | 'operator' | 'viewer';
+      createdAt: string;
+      user: {
+        id: string;
+        email: string;
+        fullName: string | null;
+      };
+    }[]>(`/organizations/${orgId}/members`);
+  }
+
+  async addMember(orgId: string, email: string, role: string) {
+    return this.request<any>(`/organizations/${orgId}/members`, {
+      method: 'POST',
+      body: JSON.stringify({ email, role }),
+    });
+  }
+
+  async updateMemberRole(orgId: string, userId: string, role: string) {
+    return this.request<any>(`/organizations/${orgId}/members/${userId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ role }),
+    });
+  }
+
+  async removeMember(orgId: string, userId: string) {
+    return this.request<any>(`/organizations/${orgId}/members/${userId}`, {
+      method: 'DELETE',
+    });
+  }
+
   // Servers
   async listServers() {
     return this.request<Server[]>('/servers');
@@ -169,10 +237,30 @@ class ApiService {
     });
   }
 
+  async generateBaselineProposals(serverId: string) {
+    return this.request<any[]>(`/servers/${serverId}/baseline-proposals`, {
+      method: 'POST',
+    });
+  }
+
   // Incidents
   async listIncidents(status?: string) {
     const q = status ? `?status=${status}` : '';
     return this.request<Incident[]>(`/incidents${q}`);
+  }
+
+  async getIncident(id: string) {
+    return this.request<Incident>(`/incidents/${id}`);
+  }
+
+  async resolveIncident(id: string) {
+    return this.request<Incident>(`/incidents/${id}/resolve`, {
+      method: 'POST',
+    });
+  }
+
+  async getServerMetrics(serverId: string) {
+    return this.request<any>(`/servers/${serverId}/metrics`);
   }
 
   // AI & Proposals
@@ -264,6 +352,31 @@ class ApiService {
 
   async getDeployment(id: string) {
     return this.request<any>(`/deployments/${id}`);
+  }
+
+  async updateDeployment(id: string, payload: {
+    appName?: string;
+    repositoryUrl?: string;
+    branch?: string;
+    environment?: string;
+    deployConfig?: any;
+  }) {
+    return this.request<any>(`/deployments/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async deleteDeployment(id: string) {
+    return this.request<{ success: boolean; deletedId: string }>(`/deployments/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async redeployDeployment(id: string) {
+    return this.request<{ deployment: any; job: any }>(`/deployments/${id}/redeploy`, {
+      method: 'POST',
+    });
   }
 
   // Audit Logs

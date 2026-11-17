@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { prisma } from '../../lib/prisma';
 import { redis } from '../../lib/redis';
 import { AlertService } from '../monitoring/alert.service';
+import { ProposalService } from '../ai/proposal.service';
 
 export class AgentService {
   static async enroll(data: {
@@ -69,6 +70,11 @@ export class AgentService {
       },
     });
 
+    // Auto-generate onboarding baseline proposals for fresh server
+    ProposalService.generateBaselineProposals(enrollmentToken.organizationId, data.serverId).catch((e) => {
+      console.warn('Could not auto-generate baseline proposals:', e.message);
+    });
+
     return {
       agentId: agent.id,
       serverId: data.serverId,
@@ -76,7 +82,8 @@ export class AgentService {
     };
   }
 
-  static async recordHeartbeat(agentId: string) {
+  static async recordHeartbeat(agentId: string, remoteIp?: string) {
+    const cleanIp = remoteIp?.replace(/^.*:/, ''); // strip IPv6 prefix ::ffff:
     const updated = await prisma.agent.update({
       where: { id: agentId },
       data: {
@@ -88,10 +95,18 @@ export class AgentService {
       },
     });
 
+    const updateData: any = {};
     if (updated.server.status !== 'online') {
+      updateData.status = 'online';
+    }
+    if (cleanIp && cleanIp !== '127.0.0.1' && cleanIp !== 'localhost' && !updated.server.hostname?.includes('.')) {
+      updateData.hostname = cleanIp;
+    }
+
+    if (Object.keys(updateData).length > 0) {
       await prisma.server.update({
         where: { id: updated.serverId },
-        data: { status: 'online' },
+        data: updateData,
       });
     }
 

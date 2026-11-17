@@ -1,6 +1,8 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import fs from 'fs';
+import path from 'path';
 import { authRoutes } from './modules/auth/auth.routes';
 import { organizationRoutes } from './modules/organizations/organizations.routes';
 import { serverRoutes } from './modules/servers/servers.routes';
@@ -30,6 +32,23 @@ app.get('/health', (_req: Request, res: Response) => {
     timestamp: new Date().toISOString(),
     service: 'nexus-api',
   });
+});
+
+// Agent binary download endpoint
+app.get('/agent/nexus-agent', (_req: Request, res: Response) => {
+  const possiblePaths = [
+    path.resolve(__dirname, '../../agent/nexus-agent/nexus-agent'),
+    path.resolve(process.cwd(), 'agent/nexus-agent/nexus-agent'),
+    path.resolve(process.cwd(), '../../agent/nexus-agent/nexus-agent'),
+  ];
+  for (const binPath of possiblePaths) {
+    if (fs.existsSync(binPath)) {
+      res.setHeader('Content-Type', 'application/octet-stream');
+      res.setHeader('Content-Disposition', 'attachment; filename="nexus-agent"');
+      return fs.createReadStream(binPath).pipe(res);
+    }
+  }
+  return res.status(404).json({ success: false, error: 'Agent binary not found on platform' });
 });
 
 // Dynamic Agent Installer Script
@@ -99,8 +118,43 @@ NEXUS_AGENT_SECRET=$SECRET
 EOF
 chmod 600 /etc/nexus-agent/config.env
 
-echo ">> Agent successfully enrolled and credentials saved to /etc/nexus-agent/config.env"
-echo ">> NEXUS Agent is ready to start."
+echo ">> Credentials saved to /etc/nexus-agent/config.env"
+
+# Ensure standard deployment directory exists
+mkdir -p /var/www
+chmod 755 /var/www
+
+# Download agent binary
+echo ">> Downloading NEXUS Agent binary from $API_URL/agent/nexus-agent..."
+curl -sSL "$API_URL/agent/nexus-agent" -o /usr/local/bin/nexus-agent || true
+chmod +x /usr/local/bin/nexus-agent || true
+
+# Setup systemd service if available
+if command -v systemctl >/dev/null 2>&1; then
+  echo ">> Installing systemd service /etc/systemd/system/nexus-agent.service..."
+  cat <<EOF > /etc/systemd/system/nexus-agent.service
+[Unit]
+Description=NEXUS AI Host Agent
+After=network.target
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/nexus-agent/config.env
+ExecStart=/usr/local/bin/nexus-agent
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+  systemctl daemon-reload || true
+  systemctl enable --now nexus-agent || true
+  echo ">> ✅ NEXUS Agent installed and running 24/7 as a systemd service!"
+else
+  echo ">> Starting NEXUS Agent in background..."
+  nohup /usr/local/bin/nexus-agent > /var/log/nexus-agent.log 2>&1 &
+  echo ">> ✅ NEXUS Agent started in background!"
+fi
 `;
 
   res.setHeader('Content-Type', 'text/x-shellscript');

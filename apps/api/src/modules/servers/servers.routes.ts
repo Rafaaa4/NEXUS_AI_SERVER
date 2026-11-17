@@ -16,5 +16,6 @@ router.get('/:id', ServersController.getServer);
 router.post('/', requireOrgAccess('admin'), validate(createServerSchema), ServersController.createServer);
 router.delete('/:id', requireOrgAccess('admin'), ServersController.deleteServer);
 router.post('/:id/enrollment-token', requireOrgAccess('admin'), ServersController.generateEnrollmentToken);
+router.post('/:id/baseline-proposals', requireOrgAccess('operator'), ServersController.generateBaselineProposals);
 
 export const serverRoutes = router;

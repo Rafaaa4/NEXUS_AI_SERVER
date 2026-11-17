@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { ServersService } from './servers.service';
+import { ProposalService } from '../ai/proposal.service';
 
 export class ServersController {
   static async listServers(req: Request, res: Response) {
@@ -91,6 +92,21 @@ export class ServersController {
       return res.status(500).json({
         success: false,
         error: { code: 'GENERATE_TOKEN_FAILED', message: err.message },
+      });
+    }
+  }
+
+  static async generateBaselineProposals(req: Request, res: Response) {
+    try {
+      const proposals = await ProposalService.generateBaselineProposals(
+        req.organizationId!,
+        req.params.id
+      );
+      return res.status(200).json({ success: true, data: proposals });
+    } catch (err: any) {
+      return res.status(500).json({
+        success: false,
+        error: { code: 'BASELINE_PROPOSALS_FAILED', message: err.message },
       });
     }
   }

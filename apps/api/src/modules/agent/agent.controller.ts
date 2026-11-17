@@ -31,7 +31,11 @@ export class AgentController {
 
   static async heartbeat(req: Request, res: Response) {
     try {
-      const result = await AgentService.recordHeartbeat(req.agent!.id);
+      const remoteIp =
+        (req.headers['x-forwarded-for'] as string)?.split(',')[0].trim() ||
+        req.socket.remoteAddress ||
+        req.ip;
+      const result = await AgentService.recordHeartbeat(req.agent!.id, remoteIp);
       return res.status(200).json({ success: true, data: result });
     } catch (err: any) {
       return res.status(500).json({

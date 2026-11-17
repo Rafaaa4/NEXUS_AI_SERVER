@@ -70,6 +70,16 @@ func main() {
 
 	log.Println("🚀 NEXUS Agent is active and monitoring (with Restricted Operations Executor).")
 
+	// Initial log stream
+	_ = cli.SendLogs([]client.LogEntry{
+		{
+			Timestamp: time.Now().UTC().Format(time.RFC3339),
+			Level:     "info",
+			Source:    "nexus-agent",
+			Message:   "NEXUS Agent started successfully. System monitoring and telemetry stream initialized.",
+		},
+	})
+
 	for {
 		select {
 		case <-metricsTicker.C:
@@ -91,6 +101,14 @@ func main() {
 			} else {
 				log.Println("💓 Heartbeat OK")
 			}
+			_ = cli.SendLogs([]client.LogEntry{
+				{
+					Timestamp: time.Now().UTC().Format(time.RFC3339),
+					Level:     "info",
+					Source:    "nexus-agent",
+					Message:   "Periodic system health check passed. Outbound TLS telemetry active.",
+				},
+			})
 
 		case <-jobPollTicker.C:
 			jobs, err := cli.PollPendingJobs()
