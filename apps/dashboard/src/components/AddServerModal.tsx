@@ -31,7 +31,14 @@ export const AddServerModal: React.FC<Props> = ({ isOpen, onClose, onServerAdded
     try {
       const server = await api.createServer({ name, provider });
       const enrollment = await api.generateEnrollmentToken(server.id);
-      setEnrollmentData(enrollment);
+      const dynamicHost = window.location.hostname;
+      const dynamicCmd = enrollment.installCommand
+        .replace(/http:\/\/localhost:4000/g, `http://${dynamicHost}:4000`)
+        .replace(/http:\/\/127\.0\.0\.1:4000/g, `http://${dynamicHost}:4000`);
+      setEnrollmentData({
+        ...enrollment,
+        installCommand: dynamicCmd,
+      });
       onServerAdded();
     } catch (err: any) {
       setError(err.message || 'Failed to create server');

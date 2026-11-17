@@ -19,6 +19,7 @@ import {
   Check,
   AlertCircle,
   ExternalLink,
+  Key,
 } from 'lucide-react';
 import { api } from '../../services/api';
 
@@ -43,6 +44,7 @@ export const ApplicationsView: React.FC<Props> = ({
   const [editingApp, setEditingApp] = useState<any | null>(null);
   const [editAppName, setEditAppName] = useState('');
   const [editRepoUrl, setEditRepoUrl] = useState('');
+  const [editGitToken, setEditGitToken] = useState('');
   const [editBranch, setEditBranch] = useState('main');
   const [editEnvironment, setEditEnvironment] = useState('production');
   const [autoRedeploy, setAutoRedeploy] = useState(true);
@@ -57,6 +59,7 @@ export const ApplicationsView: React.FC<Props> = ({
     setEditingApp(app);
     setEditAppName(app.appName);
     setEditRepoUrl(app.repositoryUrl || '');
+    setEditGitToken('');
     setEditBranch(app.branch || 'main');
     setEditEnvironment(app.environment || 'production');
     setAutoRedeploy(true);
@@ -66,10 +69,16 @@ export const ApplicationsView: React.FC<Props> = ({
     e.preventDefault();
     if (!editingApp) return;
     setSavingEdit(true);
+
+    let finalRepoUrl = editRepoUrl.trim();
+    if (editGitToken.trim() && finalRepoUrl.startsWith('https://') && !finalRepoUrl.includes('@')) {
+      finalRepoUrl = finalRepoUrl.replace('https://', `https://${editGitToken.trim()}@`);
+    }
+
     try {
       await api.updateDeployment(editingApp.id, {
         appName: editAppName.trim(),
-        repositoryUrl: editRepoUrl.trim(),
+        repositoryUrl: finalRepoUrl,
         branch: editBranch.trim(),
         environment: editEnvironment,
       });
@@ -203,8 +212,9 @@ export const ApplicationsView: React.FC<Props> = ({
 
                   <div className="flex items-center space-x-2 text-xs font-mono text-slate-300 bg-slate-950/60 p-2.5 rounded-xl border border-slate-800">
                     <Folder className="h-3.5 w-3.5 text-amber-400 shrink-0" />
-                    <span className="text-slate-500">Server Path:</span>
-                    <span className="text-emerald-400 font-semibold">{cleanPath}</span>
+                    <span className="text-slate-500">Live Web Root:</span>
+                    <span className="text-emerald-400 font-semibold">/var/www/html/</span>
+                    <span className="text-slate-500 text-[11px] truncate">({cleanPath})</span>
                   </div>
 
                   {/* Live Web Link (Port 80 / Nginx) */}
@@ -335,6 +345,23 @@ export const ApplicationsView: React.FC<Props> = ({
                     onChange={(e) => setEditRepoUrl(e.target.value)}
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 font-mono"
                     placeholder="https://github.com/user/repository.git"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-300 mb-1 flex items-center justify-between">
+                  <span>GitHub Token (Optional - Only for Private Repos)</span>
+                  <span className="text-[10px] text-amber-400">Leave blank if Public</span>
+                </label>
+                <div className="relative">
+                  <Key className="h-4 w-4 text-slate-500 absolute left-3 top-3" />
+                  <input
+                    type="password"
+                    value={editGitToken}
+                    onChange={(e) => setEditGitToken(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 font-mono"
+                    placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
                   />
                 </div>
               </div>

@@ -110,4 +110,105 @@ export class ServersController {
       });
     }
   }
+
+  static async freeRam(req: Request, res: Response) {
+    try {
+      const result = await ServersService.freeServerRam(
+        req.organizationId!,
+        req.params.id,
+        req.user?.id
+      );
+      return res.status(200).json({ success: true, data: result });
+    } catch (err: any) {
+      return res.status(500).json({
+        success: false,
+        error: { code: 'FREE_RAM_FAILED', message: err.message },
+      });
+    }
+  }
+
+  static async installService(req: Request, res: Response) {
+    try {
+      const result = await ServersService.installAgentService(
+        req.organizationId!,
+        req.params.id,
+        req.user?.id
+      );
+      return res.status(200).json({ success: true, data: result });
+    } catch (err: any) {
+      return res.status(500).json({
+        success: false,
+        error: { code: 'INSTALL_SERVICE_FAILED', message: err.message },
+      });
+    }
+  }
+
+  static async updateAgent(req: Request, res: Response) {
+    try {
+      const dynamicApi = req.body.apiUrl || `${req.protocol}://${req.get('host')}`;
+      const result = await ServersService.updateAgent(
+        req.organizationId!,
+        req.params.id,
+        dynamicApi,
+        req.user?.id
+      );
+      return res.status(200).json({ success: true, data: result });
+    } catch (err: any) {
+      return res.status(500).json({
+        success: false,
+        error: { code: 'UPDATE_AGENT_FAILED', message: err.message },
+      });
+    }
+  }
+
+  static async runCommand(req: Request, res: Response) {
+    try {
+      const { command } = req.body;
+      const result = await ServersService.runServerCommand(
+        req.organizationId!,
+        req.params.id,
+        command,
+        req.user?.id
+      );
+      return res.status(200).json({ success: true, data: result });
+    } catch (err: any) {
+      return res.status(500).json({
+        success: false,
+        error: { code: 'RUN_COMMAND_FAILED', message: err.message },
+      });
+    }
+  }
+
+  static async restartService(req: Request, res: Response) {
+    try {
+      const { service } = req.body;
+      const result = await ServersService.restartServerService(
+        req.organizationId!,
+        req.params.id,
+        service || 'nginx',
+        req.user?.id
+      );
+      return res.status(200).json({ success: true, data: result });
+    } catch (err: any) {
+      return res.status(500).json({
+        success: false,
+        error: { code: 'RESTART_SERVICE_FAILED', message: err.message },
+      });
+    }
+  }
+
+  static async getJob(req: Request, res: Response) {
+    try {
+      const job = await ServersService.getJobStatus(
+        req.organizationId!,
+        req.params.jobId
+      );
+      return res.status(200).json({ success: true, data: job });
+    } catch (err: any) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'JOB_NOT_FOUND', message: err.message },
+      });
+    }
+  }
 }

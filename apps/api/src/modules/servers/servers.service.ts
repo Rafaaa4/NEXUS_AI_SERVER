@@ -139,4 +139,148 @@ export class ServersService {
       installCommand,
     };
   }
+
+  static async freeServerRam(organizationId: string, serverId: string, actorId?: string) {
+    const server = await prisma.server.findFirst({
+      where: { id: serverId, organizationId },
+    });
+    if (!server) throw new Error('SERVER_NOT_FOUND');
+
+    const job = await prisma.job.create({
+      data: {
+        organizationId,
+        serverId,
+        jobType: 'system.drop_caches',
+        status: 'queued',
+        idempotencyKey: `drop_caches:${serverId}:${Date.now()}`,
+        result: {},
+      },
+    });
+
+    await AuditService.log({
+      organizationId,
+      actorId,
+      action: 'server.free_ram',
+      resourceType: 'server',
+      resourceId: serverId,
+      metadata: { jobId: job.id },
+    });
+
+    return { success: true, jobId: job.id, message: 'RAM purge dispatched to server agent.' };
+  }
+
+  static async installAgentService(organizationId: string, serverId: string, actorId?: string) {
+    const server = await prisma.server.findFirst({
+      where: { id: serverId, organizationId },
+    });
+    if (!server) throw new Error('SERVER_NOT_FOUND');
+
+    const job = await prisma.job.create({
+      data: {
+        organizationId,
+        serverId,
+        jobType: 'agent.install_service',
+        status: 'queued',
+        idempotencyKey: `install_service:${serverId}:${Date.now()}`,
+        result: {},
+      },
+    });
+
+    await AuditService.log({
+      organizationId,
+      actorId,
+      action: 'agent.install_service',
+      resourceType: 'server',
+      resourceId: serverId,
+      metadata: { jobId: job.id },
+    });
+
+    return { success: true, jobId: job.id, message: '24/7 background systemd service registration dispatched.' };
+  }
+
+  static async updateAgent(organizationId: string, serverId: string, apiUrl: string, actorId?: string) {
+    const server = await prisma.server.findFirst({
+      where: { id: serverId, organizationId },
+    });
+    if (!server) throw new Error('SERVER_NOT_FOUND');
+
+    const job = await prisma.job.create({
+      data: {
+        organizationId,
+        serverId,
+        jobType: 'agent.self_update',
+        status: 'queued',
+        idempotencyKey: `update:${serverId}:${Date.now()}`,
+        result: { apiUrl },
+      },
+    });
+
+    await AuditService.log({
+      organizationId,
+      actorId,
+      action: 'agent.update',
+      resourceType: 'server',
+      resourceId: serverId,
+      metadata: { apiUrl, jobId: job.id },
+    });
+
+    return { success: true, jobId: job.id, message: 'Agent update dispatched to server.' };
+  }
+
+  static async runServerCommand(organizationId: string, serverId: string, command: string, actorId?: string) {
+    const server = await prisma.server.findFirst({
+      where: { id: serverId, organizationId },
+    });
+    if (!server) throw new Error('SERVER_NOT_FOUND');
+
+    const job = await prisma.job.create({
+      data: {
+        organizationId,
+        serverId,
+        jobType: 'system.run_command',
+        status: 'queued',
+        idempotencyKey: `exec:${serverId}:${Date.now()}`,
+        result: { command },
+      },
+    });
+
+    await AuditService.log({
+      organizationId,
+      actorId,
+      action: 'server.run_command',
+      resourceType: 'server',
+      resourceId: serverId,
+      metadata: { command, jobId: job.id },
+    });
+
+    return { success: true, jobId: job.id, message: 'Command queued for execution.' };
+  }
+
+  static async restartServerService(organizationId: string, serverId: string, serviceName: string, actorId?: string) {
+    const server = await prisma.server.findFirst({
+      where: { id: serverId, organizationId },
+    });
+    if (!server) throw new Error('SERVER_NOT_FOUND');
+
+    const job = await prisma.job.create({
+      data: {
+        organizationId,
+        serverId,
+        jobType: 'service.restart',
+        status: 'queued',
+        idempotencyKey: `restart:${serviceName}:${serverId}:${Date.now()}`,
+        result: { service: serviceName, action: 'restart' },
+      },
+    });
+
+    return { success: true, jobId: job.id, message: `Restarting ${serviceName}...` };
+  }
+
+  static async getJobStatus(organizationId: string, jobId: string) {
+    const job = await prisma.job.findFirst({
+      where: { id: jobId, organizationId },
+    });
+    if (!job) throw new Error('JOB_NOT_FOUND');
+    return job;
+  }
 }

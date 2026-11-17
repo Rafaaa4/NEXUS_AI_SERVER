@@ -163,9 +163,13 @@ export const Dashboard: React.FC = () => {
   const handleShowInstallCmd = async (serverId: string) => {
     try {
       const data = await api.generateEnrollmentToken(serverId);
+      const dynamicHost = window.location.hostname;
+      const dynamicCmd = data.installCommand
+        .replace(/http:\/\/localhost:4000/g, `http://${dynamicHost}:4000`)
+        .replace(/http:\/\/127\.0\.0\.1:4000/g, `http://${dynamicHost}:4000`);
       setSelectedServerToken({
         serverId,
-        installCommand: data.installCommand,
+        installCommand: dynamicCmd,
       });
     } catch (err: any) {
       alert('Failed to generate install command');

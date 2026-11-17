@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { api } from '../services/api';
-import { X, Rocket, Terminal, CheckCircle2, GitBranch, Globe, Box, ExternalLink, ShieldCheck } from 'lucide-react';
+import { X, Rocket, Terminal, CheckCircle2, GitBranch, Globe, Box, ExternalLink, ShieldCheck, Key } from 'lucide-react';
 
 interface Props {
   isOpen: boolean;
@@ -21,6 +21,7 @@ export const DeployModal: React.FC<Props> = ({
 }) => {
   const [appName, setAppName] = useState('');
   const [repoUrl, setRepoUrl] = useState('');
+  const [gitToken, setGitToken] = useState('');
   const [branch, setBranch] = useState('main');
   const [framework, setFramework] = useState('react');
   const [port, setPort] = useState('80');
@@ -48,11 +49,16 @@ export const DeployModal: React.FC<Props> = ({
 
     const parsedPort = parseInt(port, 10) || 80;
 
+    let finalRepoUrl = repoUrl.trim();
+    if (gitToken.trim() && finalRepoUrl.startsWith('https://') && !finalRepoUrl.includes('@')) {
+      finalRepoUrl = finalRepoUrl.replace('https://', `https://${gitToken.trim()}@`);
+    }
+
     try {
       const res = await api.createDeployment({
         serverId,
         appName,
-        repositoryUrl: repoUrl || undefined,
+        repositoryUrl: finalRepoUrl || undefined,
         branch,
         deployConfig: {
           framework,
@@ -129,6 +135,23 @@ export const DeployModal: React.FC<Props> = ({
                 </div>
               </div>
 
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1 flex items-center justify-between">
+                  <span>GitHub Access Token (Optional - Only for Private Repos)</span>
+                  <span className="text-[10px] text-amber-400 font-normal">Leave empty if Public</span>
+                </label>
+                <div className="relative">
+                  <Key className="absolute left-3.5 top-3 h-4 w-4 text-slate-500" />
+                  <input
+                    type="password"
+                    placeholder="ghp_xxxxxxxxxxxxxxxxxxxx (GitHub Personal Access Token)"
+                    value={gitToken}
+                    onChange={(e) => setGitToken(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-700/80 rounded-xl pl-10 pr-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 font-mono text-xs"
+                  />
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
@@ -175,17 +198,22 @@ export const DeployModal: React.FC<Props> = ({
               </div>
 
               {/* NGINX Routing Option */}
-              <div className="p-3 bg-slate-950/60 border border-slate-800 rounded-xl flex items-center space-x-2.5">
-                <input
-                  type="checkbox"
-                  id="bindNginxCheckbox"
-                  checked={bindNginx}
-                  onChange={(e) => setBindNginx(e.target.checked)}
-                  className="rounded border-slate-700 bg-slate-900 text-blue-600 focus:ring-0 h-4 w-4 cursor-pointer"
-                />
-                <label htmlFor="bindNginxCheckbox" className="text-xs text-slate-300 cursor-pointer select-none">
-                  <span className="font-semibold text-white">Route through NGINX Web Server:</span> Automatically bind to Port 80 so it opens directly at <code className="text-emerald-400 bg-slate-900 px-1 py-0.5 rounded font-mono">http://{serverHost}/</code>
-                </label>
+              <div className="p-3 bg-slate-950/60 border border-slate-800 rounded-xl space-y-1.5">
+                <div className="flex items-center space-x-2.5">
+                  <input
+                    type="checkbox"
+                    id="bindNginxCheckbox"
+                    checked={bindNginx}
+                    onChange={(e) => setBindNginx(e.target.checked)}
+                    className="rounded border-slate-700 bg-slate-900 text-blue-600 focus:ring-0 h-4 w-4 cursor-pointer"
+                  />
+                  <label htmlFor="bindNginxCheckbox" className="text-xs text-slate-300 cursor-pointer select-none">
+                    <span className="font-semibold text-white">Route through NGINX Port 80:</span> Opens directly at <code className="text-emerald-400 bg-slate-900 px-1 py-0.5 rounded font-mono">http://{serverHost}/</code>
+                  </label>
+                </div>
+                <div className="text-[11px] text-slate-400 pl-6">
+                  📁 Deploys project assets directly into <code className="text-cyan-400 font-mono">/var/www/html/</code> (replacing Debian's default placeholder page).
+                </div>
               </div>
 
               <div className="pt-3 flex justify-end space-x-3">

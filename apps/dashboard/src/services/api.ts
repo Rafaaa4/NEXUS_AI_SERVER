@@ -243,6 +243,55 @@ class ApiService {
     });
   }
 
+  async freeServerRam(serverId: string) {
+    return this.request<{ success: boolean; data: { jobId: string; message: string } }>(
+      `/servers/${serverId}/free-ram`,
+      { method: 'POST' }
+    );
+  }
+
+  async installAgentService(serverId: string) {
+    return this.request<{ success: boolean; data: { jobId: string; message: string } }>(
+      `/servers/${serverId}/install-service`,
+      { method: 'POST' }
+    );
+  }
+
+  async updateAgent(serverId: string, apiUrl?: string) {
+    const dynamicApi = apiUrl || `http://${window.location.hostname}:4000`;
+    return this.request<{ success: boolean; data: { jobId: string; message: string } }>(
+      `/servers/${serverId}/update-agent`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ apiUrl: dynamicApi }),
+      }
+    );
+  }
+
+  async runServerCommand(serverId: string, command: string) {
+    return this.request<{ success: boolean; data: { jobId: string; message: string } }>(
+      `/servers/${serverId}/run-command`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ command }),
+      }
+    );
+  }
+
+  async restartServerService(serverId: string, service: string = 'nginx') {
+    return this.request<{ success: boolean; data: { jobId: string; message: string } }>(
+      `/servers/${serverId}/restart-service`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ service }),
+      }
+    );
+  }
+
+  async getJobStatus(jobId: string) {
+    return this.request<{ success: boolean; data: any }>(`/servers/jobs/${jobId}`);
+  }
+
   // Incidents
   async listIncidents(status?: string) {
     const q = status ? `?status=${status}` : '';
