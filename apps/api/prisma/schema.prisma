@@ -1,0 +1,323 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  owner
+  admin
+  operator
+  viewer
+}
+
+enum ServerStatus {
+  pending
+  online
+  offline
+  error
+}
+
+enum AgentStatus {
+  offline
+  online
+  degraded
+}
+
+enum IncidentSeverity {
+  low
+  medium
+  high
+  critical
+}
+
+enum IncidentStatus {
+  open
+  investigating
+  resolved
+  closed
+}
+
+enum ProposalRiskLevel {
+  low
+  medium
+  high
+  critical
+}
+
+enum ProposalStatus {
+  pending
+  approved
+  rejected
+  executed
+  failed
+  expired
+}
+
+enum ApprovalDecision {
+  approved
+  rejected
+}
+
+enum PlanTier {
+  free
+  pro
+  enterprise
+}
+
+model User {
+  id            String         @id @default(uuid()) @db.Uuid
+  email         String         @unique @db.VarChar(255)
+  passwordHash  String         @map("password_hash")
+  fullName      String?        @map("full_name") @db.VarChar(150)
+  emailVerified Boolean        @default(false) @map("email_verified")
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  memberships   Membership[]
+  refreshTokens RefreshToken[]
+  approvals     Approval[]
+  auditLogs     AuditLog[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  tokenHash String   @unique @map("token_hash")
+  revoked   Boolean  @default(false)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+model Organization {
+  id              String                   @id @default(uuid()) @db.Uuid
+  name            String                   @db.VarChar(150)
+  slug            String                   @unique @db.VarChar(100)
+  createdAt       DateTime                 @default(now()) @map("created_at") @db.Timestamptz
+  memberships     Membership[]
+  servers         Server[]
+  agents          Agent[]
+  enrollmentTokens AgentEnrollmentToken[]
+  incidents       Incident[]
+  aiAnalyses      AiAnalysis[]
+  actionProposals ActionProposal[]
+  approvals       Approval[]
+  jobs            Job[]
+  auditLogs       AuditLog[]
+  deployments     Deployment[]
+  subscription    Subscription?
+
+  @@map("organizations")
+}
+
+model Membership {
+  organizationId String       @map("organization_id") @db.Uuid
+  userId         String       @map("user_id") @db.Uuid
+  role           Role         @default(viewer)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([organizationId, userId])
+  @@map("memberships")
+}
+
+model Server {
+  id              String                 @id @default(uuid()) @db.Uuid
+  organizationId  String                 @map("organization_id") @db.Uuid
+  name            String                 @db.VarChar(150)
+  hostname        String?                @db.VarChar(255)
+  provider        String?                @db.VarChar(100)
+  osName          String?                @map("os_name") @db.VarChar(100)
+  osVersion       String?                @map("os_version") @db.VarChar(100)
+  architecture    String?                @db.VarChar(50)
+  status          ServerStatus           @default(pending)
+  createdAt       DateTime               @default(now()) @map("created_at") @db.Timestamptz
+  organization    Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  agent           Agent?
+  enrollmentTokens AgentEnrollmentToken[]
+  incidents       Incident[]
+  actionProposals ActionProposal[]
+  jobs            Job[]
+  deployments     Deployment[]
+
+  @@unique([organizationId, id])
+  @@index([organizationId])
+  @@map("servers")
+}
+
+model Agent {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  serverId       String       @unique @map("server_id") @db.Uuid
+  version        String?      @db.VarChar(50)
+  publicKey      String?      @map("public_key")
+  secretHash     String?      @map("secret_hash")
+  status         AgentStatus  @default(offline)
+  lastSeenAt     DateTime?    @map("last_seen_at") @db.Timestamptz
+  enrolledAt     DateTime     @default(now()) @map("enrolled_at") @db.Timestamptz
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  server         Server       @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@map("agents")
+}
+
+model AgentEnrollmentToken {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  serverId       String       @map("server_id") @db.Uuid
+  tokenHash      String       @unique @map("token_hash")
+  used           Boolean      @default(false)
+  expiresAt      DateTime     @map("expires_at") @db.Timestamptz
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  server         Server       @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, serverId])
+  @@map("agent_enrollment_tokens")
+}
+
+model Incident {
+  id             String           @id @default(uuid()) @db.Uuid
+  organizationId String           @map("organization_id") @db.Uuid
+  serverId       String           @map("server_id") @db.Uuid
+  title          String
+  description    String?
+  severity       IncidentSeverity
+  status         IncidentStatus   @default(open)
+  detectedAt     DateTime         @default(now()) @map("detected_at") @db.Timestamptz
+  resolvedAt     DateTime?        @map("resolved_at") @db.Timestamptz
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  server         Server           @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  aiAnalyses     AiAnalysis[]
+
+  @@index([organizationId, detectedAt(sort: Desc)])
+  @@map("incidents")
+}
+
+model AiAnalysis {
+  id              String           @id @default(uuid()) @db.Uuid
+  organizationId  String           @map("organization_id") @db.Uuid
+  incidentId      String           @map("incident_id") @db.Uuid
+  modelName       String?          @map("model_name") @db.VarChar(100)
+  rootCause       String?          @map("root_cause")
+  confidence      Decimal?         @db.Decimal(5, 4)
+  recommendations Json?
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  incident        Incident         @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  actionProposals ActionProposal[]
+
+  @@map("ai_analyses")
+}
+
+model ActionProposal {
+  id             String            @id @default(uuid()) @db.Uuid
+  organizationId String            @map("organization_id") @db.Uuid
+  serverId       String            @map("server_id") @db.Uuid
+  analysisId     String?           @map("analysis_id") @db.Uuid
+  actionType     String            @map("action_type") @db.VarChar(100)
+  parameters     Json
+  riskLevel      ProposalRiskLevel @map("risk_level")
+  status         ProposalStatus    @default(pending)
+  proposalHash   String            @map("proposal_hash")
+  expiresAt      DateTime?         @map("expires_at") @db.Timestamptz
+  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  server         Server            @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  analysis       AiAnalysis?       @relation(fields: [analysisId], references: [id], onDelete: SetNull)
+  approvals      Approval[]
+  jobs           Job[]
+
+  @@map("action_proposals")
+}
+
+model Approval {
+  id             String           @id @default(uuid()) @db.Uuid
+  organizationId String           @map("organization_id") @db.Uuid
+  proposalId     String           @map("proposal_id") @db.Uuid
+  approvedBy     String?          @map("approved_by") @db.Uuid
+  decision       ApprovalDecision
+  proposalHash   String           @map("proposal_hash")
+  decidedAt      DateTime         @default(now()) @map("decided_at") @db.Timestamptz
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  proposal       ActionProposal   @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  user           User?            @relation(fields: [approvedBy], references: [id], onDelete: SetNull)
+
+  @@map("approvals")
+}
+
+model Job {
+  id             String          @id @default(uuid()) @db.Uuid
+  organizationId String          @map("organization_id") @db.Uuid
+  serverId       String          @map("server_id") @db.Uuid
+  proposalId     String?         @map("proposal_id") @db.Uuid
+  jobType        String          @map("job_type") @db.VarChar(100)
+  status         String          @default("queued") @db.VarChar(30)
+  idempotencyKey String?         @unique @map("idempotency_key")
+  result         Json?
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  finishedAt     DateTime?       @map("finished_at") @db.Timestamptz
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  server         Server          @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  proposal       ActionProposal? @relation(fields: [proposalId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@map("jobs")
+}
+
+model AuditLog {
+  id             String        @id @default(uuid()) @db.Uuid
+  organizationId String?       @map("organization_id") @db.Uuid
+  actorId        String?       @map("actor_id") @db.Uuid
+  action         String        @db.VarChar(150)
+  resourceType   String?       @map("resource_type") @db.VarChar(100)
+  resourceId     String?       @map("resource_id") @db.Uuid
+  metadata       Json?
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  actor          User?         @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@map("audit_logs")
+}
+
+model Subscription {
+  id               String       @id @default(uuid()) @db.Uuid
+  organizationId   String       @unique @map("organization_id") @db.Uuid
+  plan             PlanTier     @default(free)
+  serverLimit      Int          @default(2) @map("server_limit")
+  aiRequestsLimit  Int          @default(50) @map("ai_requests_limit")
+  status           String       @default("active")
+  currentPeriodEnd DateTime?    @map("current_period_end") @db.Timestamptz
+  createdAt        DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
+
+model Deployment {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  serverId       String       @map("server_id") @db.Uuid
+  appName        String       @map("app_name") @db.VarChar(150)
+  repositoryUrl  String?      @map("repository_url")
+  branch         String?      @default("main") @db.VarChar(100)
+  commitSha      String?      @map("commit_sha") @db.VarChar(100)
+  environment    String       @default("production") @db.VarChar(50)
+  status         String       @default("pending") @db.VarChar(30)
+  deployConfig   Json?        @map("deploy_config")
+  logs           String?      @db.Text
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  server         Server       @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@map("deployments")
+}
