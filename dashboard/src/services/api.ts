@@ -440,6 +440,39 @@ class ApiService {
       actor: { email: string; fullName: string | null } | null;
     }[]>(`/audit-logs?limit=${limit}`);
   }
+
+  // Managed Databases per Server
+  async listDatabases(serverId?: string) {
+    const query = serverId ? `?serverId=${serverId}` : '';
+    return this.request<any[]>(`/databases${query}`);
+  }
+
+  async createDatabase(payload: {
+    serverId: string;
+    name: string;
+    dbType: string;
+    port?: number;
+    username?: string;
+    password?: string;
+  }) {
+    return this.request<any>('/databases', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async databaseAction(id: string, action: 'start' | 'stop' | 'restart' | 'backup') {
+    return this.request<any>(`/databases/${id}/action`, {
+      method: 'POST',
+      body: JSON.stringify({ action }),
+    });
+  }
+
+  async deleteDatabase(id: string) {
+    return this.request<any>(`/databases/${id}`, {
+      method: 'DELETE',
+    });
+  }
 }
 
 export const api = new ApiService();

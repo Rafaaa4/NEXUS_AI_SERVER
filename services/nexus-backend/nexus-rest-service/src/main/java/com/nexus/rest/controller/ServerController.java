@@ -10,6 +10,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.*;
 
@@ -36,6 +37,8 @@ public class ServerController {
         UUID orgId = orgHeader != null && !orgHeader.isEmpty() ? UUID.fromString(orgHeader) : UUID.fromString("1ab47797-365b-45a8-80aa-4692d020134f");
         var servers = serverRepository.findByOrganizationId(orgId);
         List<Map<String, Object>> response = new ArrayList<>();
+        OffsetDateTime now = OffsetDateTime.now();
+
         for (var s : servers) {
             Map<String, Object> map = new HashMap<>();
             map.put("id", s.getId().toString());
@@ -45,19 +48,40 @@ public class ServerController {
             map.put("osName", s.getOsName());
             map.put("osVersion", s.getOsVersion());
             map.put("architecture", s.getArchitecture());
-            map.put("status", s.getStatus());
             map.put("createdAt", s.getCreatedAt().toString());
 
             var agentOpt = agentRepository.findByServerId(s.getId());
+            String computedStatus = "offline";
+
             if (agentOpt.isPresent()) {
                 var a = agentOpt.get();
+                if (a.getLastSeenAt() != null) {
+                    long diffSeconds = Duration.between(a.getLastSeenAt(), now).abs().getSeconds();
+                    // Agent sends heartbeat every 5-15s. If no heartbeat within 60s, server is shutdown/offline!
+                    if (diffSeconds <= 60) {
+                        computedStatus = "online";
+                    }
+                }
+
+                if (!computedStatus.equals(a.getStatus())) {
+                    a.setStatus(computedStatus);
+                    agentRepository.save(a);
+                }
+
                 map.put("agent", Map.of(
                     "id", a.getId().toString(),
                     "version", a.getVersion() != null ? a.getVersion() : "0.1.0",
-                    "status", a.getStatus(),
+                    "status", computedStatus,
                     "lastSeenAt", a.getLastSeenAt() != null ? a.getLastSeenAt().toString() : ""
                 ));
             }
+
+            if (!computedStatus.equals(s.getStatus())) {
+                s.setStatus(computedStatus);
+                serverRepository.save(s);
+            }
+            map.put("status", computedStatus);
+
             response.add(map);
         }
         return ResponseEntity.ok(Map.of("success", true, "data", response));
@@ -72,7 +96,7 @@ public class ServerController {
         server.setName(req.name());
         server.setHostname(req.hostname());
         server.setProvider(req.provider() != null ? req.provider() : "generic-linux");
-        server.setStatus("pending");
+        server.setStatus("offline");
         serverRepository.save(server);
 
         return ResponseEntity.ok(Map.of("success", true, "data", Map.of(

@@ -383,3 +383,20 @@ VALUES
 ('42e0204f-c8ac-4d3a-9d8c-8ccdbf0a8e25', '1ab47797-365b-45a8-80aa-4692d020134f', '2c425709-e204-49ed-8e71-9a725135ec21', '0.1.0', '6788b454b96a9f229181fc084b04d734fde143d950498f9c8c292a3e61a2f2b3', 'online', NOW(), NOW()),
 ('b6727289-4089-42b7-a8b2-5f6534e34e56', '1ab47797-365b-45a8-80aa-4692d020134f', '292bbf77-7b94-433e-85a9-81aa4f10b091', '0.1.0', '6788b454b96a9f229181fc084b04d734fde143d950498f9c8c292a3e61a2f2b3', 'online', NOW(), NOW())
 ON CONFLICT ("id") DO NOTHING;
+
+-- CreateTable
+CREATE TABLE IF NOT EXISTS "managed_databases" (
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "organization_id" UUID NOT NULL,
+    "server_id" UUID NOT NULL,
+    "name" VARCHAR(100) NOT NULL,
+    "db_type" VARCHAR(50) NOT NULL,
+    "version" VARCHAR(50),
+    "port" INTEGER NOT NULL,
+    "username" VARCHAR(100),
+    "password" VARCHAR(255),
+    "container_name" VARCHAR(150),
+    "status" VARCHAR(30) NOT NULL DEFAULT 'running',
+    "storage_used" VARCHAR(50) DEFAULT '12 MB',
+    "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
