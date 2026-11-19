@@ -42,12 +42,12 @@ public class AuthController {
     public ResponseEntity<?> login(@RequestBody LoginRequest req) {
         var userOpt = userRepository.findByEmail(req.email().toLowerCase());
         if (userOpt.isEmpty()) {
-            return ResponseEntity.status(401).body(Map.of("error", Map.of("message", "Invalid credentials")));
+            return ResponseEntity.status(401).body(Map.of("success", false, "error", Map.of("message", "Invalid credentials")));
         }
 
         UserEntity user = userOpt.get();
         if (!passwordEncoder.matches(req.password(), user.getPasswordHash())) {
-            return ResponseEntity.status(401).body(Map.of("error", Map.of("message", "Invalid credentials")));
+            return ResponseEntity.status(401).body(Map.of("success", false, "error", Map.of("message", "Invalid credentials")));
         }
 
         String token = jwtUtil.generateToken(user.getId(), user.getEmail());
@@ -65,13 +65,13 @@ public class AuthController {
         data.put("user", Map.of("id", user.getId().toString(), "email", user.getEmail(), "name", user.getFullName() != null ? user.getFullName() : ""));
         data.put("organizations", orgs);
 
-        return ResponseEntity.ok(Map.of("data", data));
+        return ResponseEntity.ok(Map.of("success", true, "data", data));
     }
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody RegisterRequest req) {
         if (userRepository.existsByEmail(req.email().toLowerCase())) {
-            return ResponseEntity.badRequest().body(Map.of("error", Map.of("message", "Email already in use")));
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", Map.of("message", "Email already in use")));
         }
 
         UserEntity user = new UserEntity(UUID.randomUUID(), req.email().toLowerCase(), passwordEncoder.encode(req.password()), req.name());
@@ -91,13 +91,13 @@ public class AuthController {
             "organizations", List.of(Map.of("id", org.getId().toString(), "name", org.getName(), "slug", org.getSlug(), "role", "owner"))
         );
 
-        return ResponseEntity.ok(Map.of("data", data));
+        return ResponseEntity.ok(Map.of("success", true, "data", data));
     }
 
     @GetMapping("/me")
     public ResponseEntity<?> getMe(@RequestHeader(value = "Authorization", required = false) String authHeader) {
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            return ResponseEntity.status(401).body(Map.of("error", Map.of("message", "Unauthorized")));
+            return ResponseEntity.status(401).body(Map.of("success", false, "error", Map.of("message", "Unauthorized")));
         }
         try {
             var claims = jwtUtil.validateAndGetClaims(authHeader.substring(7));
@@ -111,12 +111,15 @@ public class AuthController {
                 });
             }
 
-            return ResponseEntity.ok(Map.of("data", Map.of(
-                "user", Map.of("id", user.getId().toString(), "email", user.getEmail(), "name", user.getFullName() != null ? user.getFullName() : ""),
-                "organizations", orgs
-            )));
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "data", Map.of(
+                    "user", Map.of("id", user.getId().toString(), "email", user.getEmail(), "name", user.getFullName() != null ? user.getFullName() : ""),
+                    "organizations", orgs
+                )
+            ));
         } catch (Exception e) {
-            return ResponseEntity.status(401).body(Map.of("error", Map.of("message", "Invalid token")));
+            return ResponseEntity.status(401).body(Map.of("success", false, "error", Map.of("message", "Invalid token")));
         }
     }
 }

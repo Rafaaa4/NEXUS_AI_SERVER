@@ -41,7 +41,7 @@ public class DeploymentController {
             map.put("serverId", d.getServerId().toString());
             res.add(map);
         }
-        return ResponseEntity.ok(Map.of("data", res));
+        return ResponseEntity.ok(Map.of("success", true, "data", res));
     }
 
     @PostMapping
@@ -66,7 +66,7 @@ public class DeploymentController {
         job.setCreatedAt(OffsetDateTime.now());
         jobRepository.save(job);
 
-        return ResponseEntity.ok(Map.of("data", Map.of(
+        return ResponseEntity.ok(Map.of("success", true, "data", Map.of(
             "id", dep.getId().toString(),
             "status", "pending",
             "message", "Deployment dispatched"

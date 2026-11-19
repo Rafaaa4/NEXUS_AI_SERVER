@@ -60,7 +60,7 @@ public class ServerController {
             }
             response.add(map);
         }
-        return ResponseEntity.ok(Map.of("data", response));
+        return ResponseEntity.ok(Map.of("success", true, "data", response));
     }
 
     @PostMapping
@@ -75,7 +75,7 @@ public class ServerController {
         server.setStatus("pending");
         serverRepository.save(server);
 
-        return ResponseEntity.ok(Map.of("data", Map.of(
+        return ResponseEntity.ok(Map.of("success", true, "data", Map.of(
             "id", server.getId().toString(),
             "name", server.getName(),
             "status", server.getStatus()
@@ -86,7 +86,7 @@ public class ServerController {
     public ResponseEntity<?> getInstallCommand(@PathVariable UUID id, HttpServletRequest request) {
         String host = request.getServerName();
         String installCmd = String.format("curl -sSL http://%s:4000/agent/bootstrap.sh | sudo bash -s -- --server-id %s", host, id);
-        return ResponseEntity.ok(Map.of("data", Map.of("installCommand", installCmd)));
+        return ResponseEntity.ok(Map.of("success", true, "data", Map.of("installCommand", installCmd)));
     }
 
     @PostMapping("/{id}/update-agent")
@@ -101,7 +101,7 @@ public class ServerController {
         job.setCreatedAt(OffsetDateTime.now());
         jobRepository.save(job);
 
-        return ResponseEntity.ok(Map.of("data", Map.of(
+        return ResponseEntity.ok(Map.of("success", true, "data", Map.of(
             "message", "Agent self-update job dispatched successfully.",
             "jobId", job.getId().toString()
         )));

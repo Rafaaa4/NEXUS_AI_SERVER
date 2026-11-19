@@ -35,7 +35,7 @@ public class BillingController {
 
         long currentCount = serverRepository.countByOrganizationId(orgId);
 
-        return ResponseEntity.ok(Map.of("data", Map.of(
+        return ResponseEntity.ok(Map.of("success", true, "data", Map.of(
             "plan", sub.getPlan(),
             "serverLimit", sub.getServerLimit(),
             "currentServers", currentCount,
