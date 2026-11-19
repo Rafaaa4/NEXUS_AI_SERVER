@@ -12,6 +12,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import jakarta.servlet.http.HttpServletRequest;
 
 import java.io.File;
 import java.time.OffsetDateTime;
@@ -50,31 +51,84 @@ public class AgentApiController {
     }
 
     @GetMapping(value = "/agent/bootstrap.sh", produces = MediaType.TEXT_PLAIN_VALUE)
-    public ResponseEntity<String> getBootstrapScript() {
-        String script = """
+    public ResponseEntity<String> getBootstrapScript(HttpServletRequest request) {
+        String reqHost = request.getHeader("Host");
+        if (reqHost != null && reqHost.contains(":")) {
+            reqHost = reqHost.substring(0, reqHost.indexOf(":"));
+        }
+        String defaultHost = (reqHost != null && !reqHost.isEmpty()) ? reqHost : "127.0.0.1";
+
+        String script = String.format("""
         #!/usr/bin/env bash
         set -euo pipefail
-        echo "=== NEXUS AI Agent Quick Installer ==="
+        echo "============================================="
+        echo "   NEXUS AI Node Agent Installer & Daemon   "
+        echo "============================================="
+
         SERVER_ID=""
+        HOST="${HOST:-%s}"
+        PORT="${PORT:-4000}"
+
         while [[ "$#" -gt 0 ]]; do
             case $1 in
                 --server-id) SERVER_ID="$2"; shift ;;
+                --host) HOST="$2"; shift ;;
+                --port) PORT="$2"; shift ;;
             esac
             shift
         done
+
         if [ -z "$SERVER_ID" ]; then
-            echo "Error: Missing --server-id"
+            echo "[ERROR] Missing required flag: --server-id <UUID>"
             exit 1
         fi
-        HOST="${HOST:-127.0.0.1}"
-        echo "Downloading agent binary..."
-        curl -sSL "http://${HOST}:4000/agent/nexus-agent" -o /tmp/nexus-agent
-        chmod +x /tmp/nexus-agent
-        sudo mkdir -p /var/www /etc/nexus
-        echo "Enrolling agent..."
-        /tmp/nexus-agent --server-id "$SERVER_ID" --api-url "http://${HOST}:4000" &
-        echo "Agent started successfully!"
-        """;
+
+        echo "[1/4] Preparing directories (/etc/nexus, /var/www, /var/log/nexus)..."
+        sudo mkdir -p /etc/nexus /var/www /var/log/nexus /opt/nexus
+
+        echo "[2/4] Downloading nexus-agent binary from http://${HOST}:${PORT}/agent/nexus-agent..."
+        if ! curl -f -sSL "http://${HOST}:${PORT}/agent/nexus-agent" -o /tmp/nexus-agent; then
+            echo "[ERROR] Failed to download agent binary. Make sure http://${HOST}:${PORT} is reachable from this machine."
+            exit 1
+        fi
+        sudo mv /tmp/nexus-agent /opt/nexus/nexus-agent
+        sudo chmod +x /opt/nexus/nexus-agent
+
+        echo "[3/4] Creating systemd service configuration (/etc/systemd/system/nexus-agent.service)..."
+        sudo tee /etc/systemd/system/nexus-agent.service > /dev/null <<EOF
+        [Unit]
+        Description=NEXUS AI Autonomous Linux Node Agent
+        After=network.target
+
+        [Service]
+        Type=simple
+        User=root
+        ExecStart=/opt/nexus/nexus-agent --server-id ${SERVER_ID} --api-url http://${HOST}:${PORT}
+        Restart=always
+        RestartSec=5
+        StandardOutput=journal
+        StandardError=journal
+
+        [Install]
+        WantedBy=multi-user.target
+        EOF
+
+        echo "[4/4] Starting nexus-agent service via systemctl..."
+        if command -v systemctl >/dev/null 2>&1; then
+            sudo systemctl daemon-reload
+            sudo systemctl enable --now nexus-agent.service
+            echo "[SUCCESS] nexus-agent is running as a systemd service!"
+            systemctl status nexus-agent --no-pager || true
+        else
+            echo "[INFO] systemd not detected, launching background process..."
+            sudo nohup /opt/nexus/nexus-agent --server-id "$SERVER_ID" --api-url "http://${HOST}:${PORT}" > /var/log/nexus/agent.log 2>&1 &
+            echo "[SUCCESS] nexus-agent launched in background with PID: $!"
+        fi
+
+        echo "============================================="
+        echo "Agent successfully enrolled! Check your Dashboard."
+        echo "============================================="
+        """, defaultHost);
         return ResponseEntity.ok(script);
     }
 

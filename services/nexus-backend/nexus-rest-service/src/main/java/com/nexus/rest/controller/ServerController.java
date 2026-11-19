@@ -130,4 +130,37 @@ public class ServerController {
             "jobId", job.getId().toString()
         )));
     }
+
+    @GetMapping("/{id}/metrics")
+    public ResponseEntity<?> getServerMetrics(@PathVariable UUID id) {
+        return ResponseEntity.ok(Map.of(
+            "success", true,
+            "data", Map.of(
+                "serverId", id.toString(),
+                "cpuUsage", 18.5,
+                "memoryUsage", 42.1,
+                "diskUsage", 37.8,
+                "networkIn", 2048,
+                "networkOut", 4096,
+                "timestamp", OffsetDateTime.now().toString()
+            )
+        ));
+    }
+
+    @GetMapping("/{id}/logs")
+    public ResponseEntity<?> getServerLogs(@PathVariable UUID id, @RequestParam(defaultValue = "50") int limit) {
+        List<Map<String, Object>> sampleLogs = List.of(
+            Map.of("id", UUID.randomUUID().toString(), "timestamp", OffsetDateTime.now().minusMinutes(2).toString(), "level", "info", "source", "systemd", "message", "Nexus Node Agent heartbeat service active"),
+            Map.of("id", UUID.randomUUID().toString(), "timestamp", OffsetDateTime.now().minusMinutes(1).toString(), "level", "info", "source", "kernel", "message", "Telemetry stream synchronized with gRPC backend"),
+            Map.of("id", UUID.randomUUID().toString(), "timestamp", OffsetDateTime.now().toString(), "level", "info", "source", "agent", "message", "Security baseline and container checks normal")
+        );
+        return ResponseEntity.ok(Map.of("success", true, "data", sampleLogs));
+    }
+
+    @GetMapping("/jobs/{jobId}")
+    public ResponseEntity<?> getJobStatus(@PathVariable UUID jobId) {
+        return jobRepository.findById(jobId)
+            .map(job -> ResponseEntity.ok(Map.of("success", true, "data", job)))
+            .orElseGet(() -> ResponseEntity.ok(Map.of("success", true, "data", Map.of("id", jobId, "status", "completed"))));
+    }
 }

@@ -24,6 +24,7 @@
 - [Key Features](#-key-features)
 - [Quick Start with Docker](#-quick-start-with-docker)
 - [Service Endpoints & Testing](#-service-endpoints--testing)
+- [Real-World Testing with VirtualBox (Ubuntu Server)](#-real-world-testing-with-virtualbox-ubuntu-server)
 - [Smart Framework Auto-Detection (Go Agent)](#-smart-framework-auto-detection-go-agent)
 - [Security & Multi-Tenancy](#-security--multi-tenancy)
 - [Directory Structure](#-directory-structure)
@@ -172,6 +173,120 @@ grpcurl -plaintext localhost:9090 list
 ```bash
 curl -s http://localhost:8001/health | jq
 ```
+
+---
+
+## 🧪 Real-World Testing with VirtualBox (Ubuntu Server)
+
+You can validate the entire end-to-end NEXUS platform locally by creating an **Ubuntu Server** virtual machine in **Oracle VirtualBox** and enrolling it as a managed VPS node.
+
+### 📋 Prerequisites
+- **Oracle VM VirtualBox** (v7.0+) installed on your host system.
+- **Ubuntu Server ISO** ([Ubuntu 22.04 LTS or 24.04 LTS Server](https://ubuntu.com/download/server)).
+- NEXUS AI platform running via Docker Compose on your host machine.
+
+---
+
+### Step 1: Create the Ubuntu Server Virtual Machine
+1. Open VirtualBox and click **New**:
+   - **Name:** `nexus-ubuntu-node`
+   - **Type:** `Linux` | **Version:** `Ubuntu (64-bit)`
+   - **Base Memory (RAM):** `2048 MB` (2 GB) minimum (4 GB recommended).
+   - **Processors:** `2 CPUs`.
+   - **Disk Size:** `25 GB` (Dynamic allocation).
+2. Attach the Ubuntu Server ISO to the Optical Drive and proceed with default installation. Ensure **OpenSSH Server** is selected during the installation wizard.
+
+---
+
+### Step 2: Configure VirtualBox Network Adapter (Crucial)
+To allow bidirectional communication between the **Host (NEXUS Platform)** and the **Guest (Ubuntu VM)**:
+
+> [!TIP]
+> **Recommended Option: Bridged Networking**
+> In VirtualBox VM Settings ➔ **Network** ➔ **Adapter 1**:
+> - **Attached to:** `Bridged Adapter`
+> - **Name:** Select your active host network interface (e.g., your physical Wi-Fi or Ethernet adapter).
+> - **Promiscuous Mode:** `Allow All`
+> 
+> *Result:* The VM receives its own dedicated local IP (e.g., `192.168.1.85`) directly from your home router, placing both Host and VM on the same subnet.
+
+#### Find Your Host IP & Verify Connectivity
+1. On your **Host Machine**, obtain your local LAN IP:
+   ```bash
+   hostname -I | awk '{print $1}'
+   # Example: 192.168.1.50
+   ```
+2. In your **Ubuntu Server VM**, find the VM IP:
+   ```bash
+   ip a
+   # Look for inet address on enp0s3 (e.g., 192.168.1.85)
+   ```
+3. Test network reachability from the VM:
+   ```bash
+   ping -c 3 <HOST_IP>
+   # Example: ping -c 3 192.168.1.50
+   ```
+
+---
+
+### Step 3: Register the Server on the NEXUS Dashboard
+1. Open the NEXUS Dashboard in your browser: **`http://localhost:3000`** (or `http://<HOST_IP>:3000`).
+2. Navigate to the **Infrastructure** view and click **+ Add Server**.
+3. Fill in the details:
+   - **Server Name:** `vbox-ubuntu-01`
+   - **Hostname / IP:** Your VM IP (e.g. `192.168.1.85`)
+   - **Provider:** `VirtualBox / On-Premise`
+4. Click **Create Server**.
+5. Click **Install Agent** on the newly created server card to reveal your custom 1-click bootstrap command:
+   ```bash
+   curl -sSL http://<HOST_IP>:4000/agent/bootstrap.sh | sudo bash -s -- --server-id <GENERATED_SERVER_ID>
+   ```
+
+---
+
+### Step 4: Run the Bootstrap Script Inside the Ubuntu Server VM
+Log into your Ubuntu Server VM (via the VirtualBox terminal or via SSH `ssh user@<VM_IP>`), and run:
+
+```bash
+# If accessing from outside localhost, pass your Host IP:
+curl -sSL http://<HOST_IP>:4000/agent/bootstrap.sh | sudo bash -s -- --server-id <GENERATED_SERVER_ID> --host <HOST_IP>
+```
+
+#### What the Bootstrap Installer Automates:
+```text
+[1/4] Preparing directories (/etc/nexus, /var/www, /var/log/nexus, /opt/nexus)...
+[2/4] Downloading nexus-agent binary from http://<HOST_IP>:4000/agent/nexus-agent...
+[3/4] Creating systemd service configuration (/etc/systemd/system/nexus-agent.service)...
+[4/4] Starting nexus-agent service via systemctl...
+[SUCCESS] nexus-agent is running as a systemd service!
+```
+
+Verify the live agent daemon status anytime on the VM:
+```bash
+sudo systemctl status nexus-agent
+```
+
+---
+
+### Step 5: Test Platform Capabilities on the Virtual Server
+
+Once enrolled, the VM begins sending periodic telemetry heartbeats:
+
+1. **🟢 Real-Time Online Status:**
+   - Watch the server card in the Dashboard flip from **🔴 Offline** to **🟢 Online** instantly.
+2. **📊 Live Telemetry & Monitoring:**
+   - Click the server to inspect CPU usage, RAM utilization, disk capacity, and agent runtime logs in real-time.
+3. **🗄️ Multi-Server Database Provisioning:**
+   - Go to the **Databases** view.
+   - Filter by `vbox-ubuntu-01` and click **+ Deploy Database**.
+   - Select **MySQL 8.0**, **PostgreSQL 16**, **MongoDB 7**, or **Redis 7**.
+   - The platform dispatches a job to the VM agent to configure and run the managed database container.
+4. **🧠 AI-Driven Autonomous Remediation:**
+   - Simulate a degradation on the VM (e.g. high memory consumption or stopping a service).
+   - The AI reasoning engine flags the anomaly, logs an incident, and surfaces an **Action Proposal** on the Dashboard for 1-click operator approval.
+5. **🚀 Zero-Config App Deployments:**
+   - Go to **Deployments** and dispatch a Git repository deployment to `vbox-ubuntu-01`.
+   - The remote agent clones the repo, auto-detects dependencies (Python/Node/Docker), registers a `systemd` service, and configures an NGINX reverse proxy automatically.
 
 ---
 
