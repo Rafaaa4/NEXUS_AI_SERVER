@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:16
     container_name: nexus-postgres
     restart: unless-stopped
     environment:
@@ -11,6 +11,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./infrastructure/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U nexus -d nexus_ai"]
       interval: 5s
@@ -30,6 +31,85 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+
+  # Spring Boot 3 REST Microservice
+  spring-rest-service:
+    build:
+      context: services/nexus-backend/nexus-rest-service
+      dockerfile: Dockerfile
+    container_name: nexus-rest-service
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    environment:
+      DATABASE_URL: jdbc:postgresql://postgres:5432/nexus_ai
+      DB_USER: nexus
+      DB_PASS: nexus_dev_password
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: super_secret_jwt_key_nexus_ai_dev_at_least_32_bytes_long
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Spring Boot 3 SOAP Microservice (Spring-WS)
+  spring-soap-service:
+    build:
+      context: services/nexus-backend/nexus-soap-service
+      dockerfile: Dockerfile
+    container_name: nexus-soap-service
+    restart: unless-stopped
+    ports:
+      - "8082:8082"
+    environment:
+      DATABASE_URL: jdbc:postgresql://postgres:5432/nexus_ai
+      DB_USER: nexus
+      DB_PASS: nexus_dev_password
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Spring Boot 3 gRPC Microservice (Protobuf / HTTP2)
+  spring-grpc-service:
+    build:
+      context: services/nexus-backend/nexus-grpc-service
+      dockerfile: Dockerfile
+    container_name: nexus-grpc-service
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+      - "8083:8083"
+    environment:
+      DATABASE_URL: jdbc:postgresql://postgres:5432/nexus_ai
+      DB_USER: nexus
+      DB_PASS: nexus_dev_password
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  ai-engine:
+    build:
+      context: services/ai-engine
+      dockerfile: Dockerfile
+    container_name: nexus-ai-engine
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    environment:
+      PORT: 8001
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: dashboard/Dockerfile
+    container_name: nexus-dashboard
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      - spring-rest-service
 
 volumes:
   postgres_data:

@@ -1,0 +1,46 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:tns="http://nexus.com/soap/servers"
+           targetNamespace="http://nexus.com/soap/servers"
+           elementFormDefault="qualified">
+
+    <xs:element name="GetServerStatusRequest">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="serverId" type="xs:string"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="GetServerStatusResponse">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="serverId" type="xs:string"/>
+                <xs:element name="serverName" type="xs:string"/>
+                <xs:element name="hostname" type="xs:string"/>
+                <xs:element name="status" type="xs:string"/>
+                <xs:element name="os" type="xs:string"/>
+                <xs:element name="lastSeen" type="xs:string"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="EmergencyLockdownRequest">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="serverId" type="xs:string"/>
+                <xs:element name="reason" type="xs:string"/>
+                <xs:element name="initiatedBy" type="xs:string"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="EmergencyLockdownResponse">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="success" type="xs:boolean"/>
+                <xs:element name="message" type="xs:string"/>
+                <xs:element name="jobId" type="xs:string"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+</xs:schema>

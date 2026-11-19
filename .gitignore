@@ -1,34 +1,106 @@
+# ==========================================
+# Java & Maven
+# ==========================================
+target/
+**/target/
+*.class
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+hs_err_pid*
+replay_pid*
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# ==========================================
+# Node & Frontend
+# ==========================================
 node_modules/
-dist/
-build/
-.env
-.env.local
-.env.*.local
-*.log
+**/node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+.pnpm-store/
+dist/
+**/dist/
+build/
+**/build/
+.cache/
+.parcel-cache/
+.eslintcache
 
-# Prisma
-apps/api/prisma/*.db
-apps/api/prisma/*.db-journal
+# ==========================================
+# Environment & Secrets
+# ==========================================
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.cert
 
+# ==========================================
 # Go
+# ==========================================
 bin/
+**/bin/
 agent/nexus-agent/nexus-agent
 *.exe
+*.exe~
+*.dll
+*.so
+*.dylib
 
-# Python
+# ==========================================
+# Python (AI Engine)
+# ==========================================
 __pycache__/
-*.pyc
-.venv/
+**/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
 env/
+venv/
+.venv/
+ENV/
 .pytest_cache/
+.coverage
+htmlcov/
 
-# OS / Editor
+# ==========================================
+# Databases & Local Data
+# ==========================================
+.pgdata/
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# ==========================================
+# IDE & System Files
+# ==========================================
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 .idea/
+*.iml
+*.iws
+*.ipr
 .vscode/
 *.swp
-
-.pgdata
+*.swo
+*~
+*.log
+logs/
+**/logs/

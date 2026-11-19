@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package com.nexus.grpc;
+
+option java_multiple_files = true;
+option java_package = "com.nexus.grpc.proto";
+option java_outer_classname = "NexusAgentProto";
+
+service AgentService {
+  rpc ReportHeartbeat (HeartbeatRequest) returns (HeartbeatResponse);
+  rpc StreamTelemetry (TelemetryRecord) returns (TelemetryAck);
+  rpc FetchPendingJob (JobPollRequest) returns (JobPollResponse);
+}
+
+message HeartbeatRequest {
+  string serverId = 1;
+  string agentVersion = 2;
+  int64 timestamp = 3;
+}
+
+message HeartbeatResponse {
+  bool acknowledged = 1;
+  string serverStatus = 2;
+}
+
+message TelemetryRecord {
+  string serverId = 1;
+  double cpuPercent = 2;
+  double memoryPercent = 3;
+  double diskPercent = 4;
+  int64 timestamp = 5;
+}
+
+message TelemetryAck {
+  bool success = 1;
+  string message = 2;
+}
+
+message JobPollRequest {
+  string serverId = 1;
+}
+
+message JobPollResponse {
+  bool hasJob = 1;
+  string jobId = 2;
+  string jobType = 3;
+  string payload = 4;
+}
