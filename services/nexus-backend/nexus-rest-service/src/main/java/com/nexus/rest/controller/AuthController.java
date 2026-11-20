@@ -36,7 +36,14 @@ public class AuthController {
     }
 
     public record LoginRequest(String email, String password) {}
-    public record RegisterRequest(String email, String password, String name) {}
+    public record RegisterRequest(String email, String password, String name, String fullName) {
+        public String resolveName() {
+            if (fullName != null && !fullName.isBlank()) return fullName.trim();
+            if (name != null && !name.isBlank()) return name.trim();
+            if (email != null && email.contains("@")) return email.substring(0, email.indexOf("@"));
+            return "User";
+        }
+    }
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest req) {
@@ -70,25 +77,38 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody RegisterRequest req) {
+        if (req.email() == null || req.email().isBlank() || req.password() == null || req.password().isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", Map.of("message", "Email and password are required")));
+        }
+
         if (userRepository.existsByEmail(req.email().toLowerCase())) {
             return ResponseEntity.badRequest().body(Map.of("success", false, "error", Map.of("message", "Email already in use")));
         }
 
-        UserEntity user = new UserEntity(UUID.randomUUID(), req.email().toLowerCase(), passwordEncoder.encode(req.password()), req.name());
+        String resolvedName = req.resolveName();
+        UserEntity user = new UserEntity(UUID.randomUUID(), req.email().toLowerCase(), passwordEncoder.encode(req.password()), resolvedName);
         userRepository.save(user);
 
-        OrganizationEntity org = new OrganizationEntity(UUID.randomUUID(), req.name() + "'s Org", "org-" + UUID.randomUUID().toString().substring(0, 8));
+        OrganizationEntity org = new OrganizationEntity(UUID.randomUUID(), resolvedName + "'s Org", "org-" + UUID.randomUUID().toString().substring(0, 8));
         organizationRepository.save(org);
 
         MembershipEntity membership = new MembershipEntity(org.getId(), user.getId(), "owner");
         membershipRepository.save(membership);
 
         String token = jwtUtil.generateToken(user.getId(), user.getEmail());
+        Map<String, Object> orgMap = Map.of(
+            "id", org.getId().toString(),
+            "name", org.getName(),
+            "slug", org.getSlug(),
+            "role", "owner"
+        );
+
         Map<String, Object> data = Map.of(
             "accessToken", token,
             "refreshToken", token,
-            "user", Map.of("id", user.getId().toString(), "email", user.getEmail(), "name", user.getFullName()),
-            "organizations", List.of(Map.of("id", org.getId().toString(), "name", org.getName(), "slug", org.getSlug(), "role", "owner"))
+            "user", Map.of("id", user.getId().toString(), "email", user.getEmail(), "name", resolvedName),
+            "organization", orgMap,
+            "organizations", List.of(orgMap)
         );
 
         return ResponseEntity.ok(Map.of("success", true, "data", data));
