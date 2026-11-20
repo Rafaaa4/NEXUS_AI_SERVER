@@ -1,8 +1,8 @@
 <div align="center">
 
-# 🌐 NEXUS AI — Enterprise VPS & Infrastructure Management Platform
+# 🌐 NEXUS AI — Enterprise Linux VPS & Cloud Infrastructure Management Platform
 
-**AI-Driven Autonomous Linux Server Orchestration, Multi-Protocol Microservices & Telemetry Platform**
+**AI-Driven Autonomous Linux Server Orchestration, Multi-Protocol Microservices, Real-Time Telemetry & Universal Web Deployment Engine**
 
 [![Docker Compose](https://img.shields.io/badge/Docker%20Compose-v2-blue?logo=docker&logoColor=white)](https://www.docker.com/)
 [![Spring Boot 3](https://img.shields.io/badge/Spring%20Boot-3.3.5-brightgreen?logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
@@ -18,305 +18,390 @@
 ---
 
 ## 📋 Table of Contents
-- [Overview](#-overview)
-- [System Architecture](#-system-architecture)
-- [Microservices & Components](#-microservices--components)
-- [Key Features](#-key-features)
-- [Quick Start with Docker](#-quick-start-with-docker)
-- [Service Endpoints & Testing](#-service-endpoints--testing)
-- [Real-World Testing with VirtualBox (Ubuntu Server)](#-real-world-testing-with-virtualbox-ubuntu-server)
-- [Smart Framework Auto-Detection (Go Agent)](#-smart-framework-auto-detection-go-agent)
-- [Security & Multi-Tenancy](#-security--multi-tenancy)
-- [Directory Structure](#-directory-structure)
+- [🌟 Platform Overview](#-platform-overview)
+- [🗺️ Complete Platform Walkthrough](#️-complete-platform-walkthrough)
+- [🏗️ In-Depth Backend & Microservices Architecture](#️-in-depth-backend--microservices-architecture)
+- [🚀 NEXUS Node Agent (Go Daemon) & 24/7 Server Setup](#-nexus-node-agent-go-daemon--247-server-setup)
+- [🌐 Universal Web Deployment Engine (Zero-Config)](#-universal-web-deployment-engine-zero-config)
+- [🛡️ Security Center & Host Firewall Orchestration](#️-security-center--host-firewall-orchestration)
+- [📊 Real-Time Observability & Telemetry Guardian](#-real-time-observability--telemetry-guardian)
+- [🧠 AI Diagnostic Engine & Human-in-the-Loop Remediation](#-ai-diagnostic-engine--human-in-the-loop-remediation)
+- [⚡ Quick Start with Docker](#-quick-start-with-docker)
+- [🧪 Real-World Testing with VirtualBox or Cloud VPS](#-real-world-testing-with-virtualbox-or-cloud-vps)
+- [📡 API & Multi-Protocol Testing](#-api--multi-protocol-testing)
+- [📂 Directory Structure](#-directory-structure)
 
 ---
 
-## 🌟 Overview
+## 🌟 Platform Overview
 
-**NEXUS AI** is an enterprise-grade cloud control plane designed to monitor, remediate, and deploy applications across distributed Linux VPS fleets. Built with modern microservice design principles, NEXUS delivers:
-- **Multi-Protocol Microservices (Spring Boot 3 + Java 21):** Exposes simultaneous **REST**, **SOAP (Spring-WS)**, and **gRPC (Protobuf)** interfaces.
-- **Explainable AI Root Cause Diagnostics (FastAPI):** Automated inference pipeline that detects CPU throttling, memory leaks, disk exhaustion, and proposes human-in-the-loop action proposals.
-- **Smart Zero-Config Deployments:** The lightweight remote agent auto-inspects repository structure (FastAPI, Flask, Node.js, Compose), binds systemd services, and provisions NGINX reverse proxies.
-- **Real-Time Operational Dashboard:** High-performance React 18 + TailwindCSS console served via Alpine NGINX.
+**NEXUS AI** is an enterprise-grade cloud control plane designed to monitor, secure, deploy, and remediate applications across fleets of distributed Linux VPS nodes (Ubuntu Server, Debian, Hetzner, AWS, DigitalOcean, or local VirtualBox VMs).
+
+Unlike traditional panels (cPanel, Portainer), NEXUS AI combines:
+1. **Multi-Protocol Spring Boot 3 Microservices:** Simultaneous **REST (JSON)**, **SOAP (Spring-WS / XML)**, and **gRPC (HTTP/2 Protobuf)** interfaces connected to a shared persistence model.
+2. **Autonomous Go Node Agent:** A standalone, low-footprint daemon running on each Linux server that continuously gathers kernel metrics, manages systemd services, streams journal logs, and executes queued operational jobs.
+3. **Universal Web Deployment Engine:** Deploys any web technology (React/Vite SPA, Next.js/Nuxt SSR, Python Flask/FastAPI, PHP-FPM, Docker Compose) with atomic zero-downtime releases and automatic Nginx reverse proxy configuration.
+4. **Explainable AI Root Cause Analysis (FastAPI):** An incident inference engine that correlates logs with hardware metrics and generates cryptographically signed Action Proposals for 1-click human-approved remediation.
 
 ---
 
-## 🏗️ System Architecture
+## 🗺️ Complete Platform Walkthrough
+
+The NEXUS platform provides a unified control panel divided into dedicated operational hubs:
+
+```mermaid
+flowchart LR
+    Dashboard["NEXUS Dashboard (:3000)"]
+    
+    Dashboard --> Infra["🖥️ Infrastructure & Fleet"]
+    Dashboard --> Containers["🐳 Docker Containers & Services"]
+    Dashboard --> DB["🗄️ Managed Databases"]
+    Dashboard --> Deploy["🚀 CI/CD & Deployments"]
+    Dashboard --> Telemetry["📊 Live Telemetry & Log Explorer"]
+    Dashboard --> Security["🛡️ Security Center & UFW Firewall"]
+    Dashboard --> AI["🧠 AI Command Center"]
+```
+
+### 1. 🖥️ Infrastructure & Host Fleet (`/infrastructure`)
+- **Fleet Overview:** Real-time visibility into all enrolled host machines, operating system distribution, CPU architecture, and connection status (`ONLINE` vs `OFFLINE`).
+- **1-Click Agent Enrollment:** Generates custom bootstrap commands with deterministic server UUIDs.
+- **Remote Web Terminal:** Integrated terminal to execute remote commands (`POST /api/v1/servers/{id}/run-command`) directly on any host.
+- **1-Click Docker Engine Provisioning:** Automatically installs Docker Engine and Docker Compose v2 on fresh Ubuntu servers without manual SSH commands.
+- **Host Deletion & Maintenance:** Cleanly de-registers hosts and removes orphaned telemetry state.
+
+### 2. 🐳 Docker Containers & Stacks (`/containers`)
+- **Stack Monitoring:** Inspects running containers on any managed host (CPU, Memory, Ports, Image Tag, Container State).
+- **Service Lifecycle:** Start, stop, restart, and inspect raw Docker container logs directly from the UI.
+- **Automated Engine Verification:** Verifies Docker daemon status and initiates automatic repairs if the daemon crashes.
+
+### 3. 🗄️ Managed Database Clusters (`/databases`)
+- **Multi-Engine Provisioning:** Instant deployment of production-grade database instances:
+  - **PostgreSQL 16**, **MySQL 8.0**, **MongoDB 7**, and **Redis 7**.
+- **Host Binding:** Target databases to specific host nodes with custom ports, credentials, and persistent data volumes.
+
+### 4. 🚀 Universal Web Deployments & Git CI/CD (`/deployments`)
+- **Git Continuous Deployment:** Webhook integration (`/api/v1/deployments/webhook`) triggers automatic zero-downtime deployments on Git pushes.
+- **Atomic Release History:** Full versioning under `/var/www/nexus/deployments/<app>/releases/` with rollback capability.
+- **Direct Web Access:** Automatic placement of public web files under `/var/www/html/` with Nginx routing so `http://SERVER_IP/` immediately displays the website.
+
+### 5. 📊 Observability & Telemetry Guardian (`/monitoring`)
+- **Real-Time Telemetry:** Live streaming meters for CPU utilization, RAM consumption, Root storage capacity, and system Load Average (updated every 3 seconds).
+- **Auto-Redacted Log Explorer:** Real-time streaming of host `journalctl` system logs, systemd service events, and agent activity.
+- **Incident Timeline:** Visual anomaly cards flagging high memory pressure, crashed services, or storage thresholds.
+
+### 6. 🛡️ Security Center & Host Firewall (`/security`)
+- **Host-Bound Port Management:** Select any enrolled server to inspect active UFW firewall rules.
+- **1-Click Allow / Deny:** Instantly open or block ports (`80`, `443`, `22`, `3000`, `8080`, `5432`) directly from the dashboard.
+- **Custom Port Opener:** Form to open any TCP/UDP port on the remote host with instantaneous UFW reload.
+- **Immutable Security Audit Trail:** Cryptographic logging of every deployment, firewall modification, and administrative action.
+
+---
+
+## 🏗️ In-Depth Backend & Microservices Architecture
+
+The NEXUS backend platform is built with **Spring Boot 3.3.5** running on **Java 21 LTS**, architected into clean modular services that share a common domain model:
 
 ```mermaid
 flowchart TD
-    subgraph Clients["Clients & Edge Agents"]
-        Dashboard["💻 Web Dashboard<br/>(React 18 / Nginx :3000)"]
-        Agent["🚀 Nexus Agent<br/>(Go Daemon on Linux VPS)"]
-        Enterprise["🏢 Legacy / Enterprise Client<br/>(SOAP XML Client)"]
+    subgraph Edge["Clients & Daemons"]
+        WebUI["💻 Dashboard Frontend<br/>(React 18 / Vite / Nginx :3000)"]
+        Agent["🚀 NEXUS Agent<br/>(Go Binary on Ubuntu VPS)"]
+        Enterprise["🏢 Enterprise Clients<br/>(SOAP XML / WSDL)"]
     end
 
-    subgraph Platform["NEXUS Microservices Platform (Spring Boot 3 / Java 21)"]
-        RestAPI["🟢 nexus-rest-service<br/>(:4000)<br/>REST API, JWT Security, Server & Deployment Ops"]
-        SoapWS["🟣 nexus-soap-service<br/>(:8082)<br/>Spring-WS, WSDL Contracts, Enterprise Audits"]
-        GrpcRPC["🔵 nexus-grpc-service<br/>(:9090)<br/>HTTP/2 Binary Telemetry & Sub-ms Heartbeats"]
-        Common["📦 nexus-common<br/>Shared Domain Entities, Repositories, DTOs"]
+    subgraph BackendCluster["Spring Boot 3 / Java 21 Backend Platform"]
+        RestService["🟢 nexus-rest-service (:4000)<br/>- AgentApiController<br/>- ServerController<br/>- DeploymentController<br/>- ServerTelemetryService (Cache)<br/>- Spring Security 6 & JWT Filter"]
+        
+        SoapService["🟣 nexus-soap-service (:8082)<br/>- Spring-WS / WSDL4J<br/>- ServerStatusEndpoint<br/>- XML Schema (XSD) Validation"]
+        
+        GrpcService["🔵 nexus-grpc-service (:9090)<br/>- Netty HTTP/2 Server<br/>- TelemetryProto Service<br/>- Sub-millisecond Heartbeats"]
+        
+        CommonLib["📦 nexus-common Module<br/>- JPA Entities (Server, Agent, Job, Deployment)<br/>- PostgreSQL JSONB @JdbcTypeCode<br/>- Spring Data JPA Repositories"]
     end
 
-    subgraph AIAndData["AI Engine & Data Persistence"]
-        Postgres[("🐘 PostgreSQL 16<br/>(:5432)")]
-        RedisStore[("⚡ Redis 7 Cache<br/>(:6379)")]
-        AIEngine["🧠 nexus-ai-engine<br/>(FastAPI :8001)<br/>Incident Root Cause Diagnostic Engine"]
+    subgraph DataAndAI["Persistence & AI Inference Engine"]
+        AIEngine["🧠 nexus-ai-engine (:8001)<br/>- FastAPI / Python 3.11<br/>- Incident Diagnostic Inference<br/>- Action Proposal Generation"]
+        Postgres[("🐘 PostgreSQL 16 (:5432)<br/>Multi-Tenant DB & JSONB Storage")]
+        RedisCache[("⚡ Redis 7 (:6379)<br/>Session Tokens & Telemetry Cache")]
     end
 
-    Dashboard -->|REST / HTTP| RestAPI
-    Agent -->|Heartbeat & Jobs| RestAPI
-    Agent -.->|Protobuf Stream| GrpcRPC
-    Enterprise -->|SOAP / XML :8082| SoapWS
+    WebUI -->|REST JSON| RestService
+    Agent -->|Heartbeat, Metrics & Jobs| RestService
+    Agent -.->|Protobuf Stream| GrpcService
+    Enterprise -->|SOAP XML :8082| SoapService
 
-    RestAPI --> Common
-    SoapWS --> Common
-    GrpcRPC --> Common
+    RestService --> CommonLib
+    SoapService --> CommonLib
+    GrpcService --> CommonLib
 
-    Common --> Postgres
-    RestAPI --> RedisStore
-    RestAPI --> AIEngine
+    CommonLib --> Postgres
+    RestService --> RedisCache
+    RestService -->|POST /analyze| AIEngine
+```
+
+### Backend Microservice Deep-Dive:
+
+#### 1. `nexus-rest-service` (Port 4000)
+- **Framework:** Spring Boot 3.3.5, Spring MVC, Spring Security 6, JJWT 0.12.
+- **Key Controllers & Components:**
+  - `AgentApiController`: Endpoints for agent binary downloads (`/agent/nexus-agent`), dynamic shell installer (`/agent/bootstrap.sh`), metric snapshots (`/agent/v1/metrics`), live logs ingestion (`/agent/v1/logs`), pending job polling (`/agent/v1/jobs/pending`), and job results (`/agent/v1/jobs/{id}/result`).
+  - `ServerController`: Server registration, deletion, remote command execution (`/run-command`), UFW firewall management (`/firewall/allow`, `/firewall/deny`), and real-time telemetry feed (`/metrics`, `/logs`).
+  - `ServerTelemetryService`: High-performance concurrent memory cache storing live snapshots and recent host logs per server, ensuring real-time responsiveness without database write bottlenecks.
+  - `DeploymentController`: Application deployment requests, rollback dispatch, and GitHub push webhook ingestion.
+
+#### 2. `nexus-common` (Domain & Persistence)
+- **Shared Entities:** `ServerEntity`, `AgentEntity`, `JobEntity`, `DeploymentEntity`, `ManagedDatabaseEntity`, `IncidentEntity`.
+- **JSONB Serialization:** Uses Hibernate 6 `@JdbcTypeCode(SqlTypes.JSON)` for rich configuration payloads (`parameters`, `deploy_config`, `result`).
+- **Multi-Tenancy:** Strict organization scoping (`organization_id`) across all database queries.
+
+#### 3. `nexus-soap-service` (Port 8082)
+- **Framework:** Spring-WS, WSDL4J, JAXB.
+- **Purpose:** Enterprise-grade integration exposing contract-first XML Web Services (`/ws/servers.wsdl`) for legacy enterprise systems.
+
+#### 4. `nexus-grpc-service` (Port 9090)
+- **Framework:** gRPC Java, Protocol Buffers (Protobuf v3), Netty HTTP/2.
+- **Purpose:** Ultra-low latency, binary streaming RPCs for high-frequency telemetry delivery.
+
+#### 5. `nexus-ai-engine` (Port 8001)
+- **Framework:** Python 3.11, FastAPI, Uvicorn, Pydantic v2.
+- **Purpose:** Diagnostic inference engine analyzing incidents (Nginx crashes, CPU throttling, disk capacity leaks) and generating human-in-the-loop Action Proposals.
+
+---
+
+## 🚀 NEXUS Node Agent (Go Daemon) & 24/7 Server Setup
+
+The **NEXUS Agent** (`agent/nexus-agent`) is a lightweight, compiled Go binary that runs natively on the target Linux VPS as a `systemd` daemon. It requires no heavy dependencies (no Node.js or Python required for the agent itself).
+
+### ⚙️ How to Install the Agent on Any Ubuntu Server
+
+#### Method 1: The 1-Click Bootstrap Script (Recommended)
+On your Ubuntu Server (via SSH), run:
+
+```bash
+curl -sSL http://<NEXUS_HOST_IP>:4000/agent/bootstrap.sh | sudo bash -s -- --server-id <YOUR_SERVER_UUID> --host <NEXUS_HOST_IP>
+```
+
+> **Example with LAN IP:**
+> ```bash
+> curl -sSL http://192.168.0.137:4000/agent/bootstrap.sh | sudo bash -s -- --server-id 0fd7cbb8-3e22-4c46-b28a-681735a0a1ff --host 192.168.0.137
+> ```
+
+#### What the Bootstrap Script Automates:
+1. Creates directories: `/opt/nexus`, `/etc/nexus`, `/var/www`, and `/var/log/nexus`.
+2. Downloads the compiled `nexus-agent` binary directly from the backend API.
+3. Places the binary at `/opt/nexus/nexus-agent` and symlinks to `/usr/local/bin/nexus-agent`.
+4. Writes the production `systemd` unit file at `/etc/systemd/system/nexus-agent.service`.
+5. Enables and starts the service via `systemctl enable --now nexus-agent.service`.
+
+---
+
+### 🛡️ How to Keep the Agent Always Running (24/7 Daemon)
+
+The agent is managed by Linux **systemd**, ensuring it automatically recovers from crashes and starts on system boot:
+
+#### The Production Systemd Service (`/etc/systemd/system/nexus-agent.service`):
+```ini
+[Unit]
+Description=NEXUS AI Autonomous Linux Node Agent
+After=network.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=/opt/nexus/nexus-agent --server-id YOUR_SERVER_UUID --api-url http://YOUR_HOST_IP:4000
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+```
+
+#### Key Resilience Configurations:
+- **`Restart=always`:** If the agent is terminated by an out-of-memory event or killed, systemd restarts it immediately.
+- **`RestartSec=5`:** Waits 5 seconds before restarting to prevent rapid crash looping.
+- **`WantedBy=multi-user.target`:** Automatically starts the agent whenever the server boots or reboots.
+
+#### Useful Agent Management Commands:
+```bash
+# Check real-time service status
+sudo systemctl status nexus-agent --no-pager
+
+# View live streaming agent logs
+sudo journalctl -u nexus-agent -f
+
+# Restart the agent daemon
+sudo systemctl restart nexus-agent
+
+# Stop the agent
+sudo systemctl stop nexus-agent
 ```
 
 ---
 
-## 🧩 Microservices & Components
+### 🔄 How to Update the Agent Binary on the Server
 
-| Container Name | Technology | Port(s) | Description |
-| :--- | :--- | :--- | :--- |
-| **`nexus-dashboard`** | React 18, Vite, Nginx | `3000` | Administrative UI console with real-time analytics, 1-click update, and modal workflows. |
-| **`nexus-rest-service`** | Spring Boot 3.3, Java 21 | `4000` | Core REST API with Spring Security 6, JJWT authentication, and deployment orchestration. |
-| **`nexus-soap-service`** | Spring-WS, WSDL4J | `8082` | Enterprise SOAP Web Service exposing `/ws/servers.wsdl` for legacy automation. |
-| **`nexus-grpc-service`** | gRPC, Protobuf, Netty | `9090`, `8083` | High-throughput binary RPC service for agent telemetry streaming. |
-| **`nexus-ai-engine`** | Python 3.11, FastAPI, Uvicorn | `8001` | Explanatory AI reasoning engine generating root cause diagnostics and mitigation proposals. |
-| **`nexus-postgres`** | PostgreSQL 16 | `5432` | Relational database with strict multi-tenant foreign keys and indexes. |
-| **`nexus-redis`** | Redis 7 Alpine | `6379` | In-memory cache, rate limiting, and real-time state pub/sub. |
+When a new version of the agent is compiled, update your server in 3 seconds:
+
+```bash
+# 1. Stop the running agent
+sudo systemctl stop nexus-agent
+
+# 2. Download the latest binary
+sudo curl -sSL http://<NEXUS_HOST_IP>:4000/agent/nexus-agent -o /opt/nexus/nexus-agent
+sudo chmod +x /opt/nexus/nexus-agent
+
+# 3. Restart the agent
+sudo systemctl restart nexus-agent
+```
+
+---
+
+## 🌐 Universal Web Deployment Engine (Zero-Config)
+
+The deployment engine deploys any web application to an Ubuntu server so that opening `http://SERVER_IP/` immediately renders the website.
+
+```mermaid
+flowchart TD
+    GitRepo["Git Clone Repo"] --> FrameworkDetect{"Intelligent Framework Detection"}
+
+    FrameworkDetect -->|index.html / public| SPA["⚡ React / Vite / Static SPA<br/>Auto-upgrades Node 20 LTS<br/>npm run build"]
+    FrameworkDetect -->|requirements.txt| Python["🐍 Python Flask / FastAPI<br/>python3 -m venv venv<br/>pip install -r requirements.txt"]
+    FrameworkDetect -->|Dockerfile / Compose| DockerApp["🐳 Docker Container<br/>Auto-installs Docker & Compose<br/>docker compose up -d --build"]
+    FrameworkDetect -->|index.php| PHP["🐘 PHP Web Application<br/>Installs PHP-FPM<br/>Configures FastCGI socket"]
+
+    SPA --> ReleaseDir["Atomic Release Directory<br/>/var/www/nexus/deployments/<app>/releases/release_<timestamp>"]
+    Python --> ReleaseDir
+    DockerApp --> ReleaseDir
+    PHP --> ReleaseDir
+
+    ReleaseDir --> SyncWebroot["Sync & Bind Production Webroot<br/>rsync to /var/www/html/<br/>index.html guaranteed"]
+    SyncWebroot --> NginxConfig["Configure /etc/nginx/sites-available/default<br/>Reverse Proxy or Root static serve"]
+    NginxConfig --> HealthCheck["HTTP Health Check<br/>curl -s -o /dev/null 127.0.0.1:80"]
+    HealthCheck --> Live["🌐 Website Accessible at http://SERVER_IP/"]
+```
+
+### Key Deployment Guarantees:
+1. **Atomic Releases:** Every release is stored in `/var/www/nexus/deployments/<appName>/releases/release_<timestamp>` with a `current` symlink.
+2. **Guaranteed Public Root:** Files are synchronized to `/var/www/html/` to ensure the server IP root never shows a 403 Forbidden or default Nginx welcome page.
+3. **Automated Runtime Provisioning:**
+   - Detects outdated Node.js and upgrades to **Node.js 20 LTS** (required for Vite 7 / React 19).
+   - Automatically installs **Docker Engine & Compose v2** if a Dockerfile or compose file is detected.
+   - Sets up Python virtual environments (`venv`) and registers persistent `systemd` application services for backend apps.
+
+---
+
+## 🛡️ Security Center & Host Firewall Orchestration
+
+The **Security Center** connects directly to the server's native **UFW (Uncomplicated Firewall)**:
+
+- **Live Port State:** Displays all host firewall rules categorized as `OPEN (ALLOWED)` in green or `CLOSED (BLOCKED)` in red.
+- **1-Click Port Toggling:** Click **Close Port** to block incoming traffic or **Open Port** to allow it (`ufw allow` / `ufw deny`).
+- **Custom Port Opener:** Quickly open custom application ports (e.g. `3000`, `8080`, `5432`, `27017`) with automatic rule persistence and UFW reloads.
+- **Audit Logging:** Every firewall adjustment is logged with actor email and timestamp.
+
+---
+
+## 📊 Real-Time Observability & Telemetry Guardian
+
+The telemetry pipeline delivers live metrics without manual page refreshes:
+
+- **Kernel Metrics (Go Collector):**
+  - CPU: Parsed from `/proc/stat` across compute cycles.
+  - RAM: Read from `/proc/meminfo` (`MemTotal`, `MemAvailable`, `MemFree`).
+  - Storage: Extracted via `syscall.Statfs("/")`.
+  - Network: Throughput (Rx/Tx bytes per second) via `/proc/net/dev`.
+  - Load Average: Read from `/proc/loadavg` (1m, 5m, 15m).
+- **Host Journal Streaming:** The agent streams recent `journalctl` lines (SSH logins, kernel alerts, Nginx access logs, Docker events).
+- **Backend Memory Cache:** Cached by `ServerTelemetryService` and served with a 3-second auto-refresh interval in the frontend.
+
+---
+
+## 🧠 AI Diagnostic Engine & Human-in-the-Loop Remediation
+
+The Python AI Engine (`services/ai-engine`) acts as an intelligent SRE (Site Reliability Engineer):
+
+1. **Incident Flagging:** When an anomaly occurs (Nginx service down, memory leak, root storage above threshold), an incident is registered.
+2. **AI Inference (`POST /analyze`):** Clicking **Diagnose with AI** passes the incident and redacted logs to the FastAPI diagnostic model.
+3. **Root Cause Hypotheses:** The engine produces probable causes and recommendations with confidence scores.
+4. **Action Proposal:** Produces a structured remediation proposal (e.g. `service.restart`, `disk.cleanup_cache`).
+5. **Human Approval:** Operators approve the proposal via the UI, prompting the backend to enqueue an execution job for the agent.
 
 ---
 
 ## ⚡ Quick Start with Docker
 
-### 1. Clone & Setup
+### 1. Clone the Repository
 ```bash
 git clone https://github.com/Rafaaa4/vps_controller.git
 cd vps_controller
 ```
 
 ### 2. Launch Entire Platform (1-Click)
-Start all 7 containers directly with Docker Compose:
 ```bash
 docker compose up -d
 ```
 
-### 3. Verify Health
+### 3. Verify Container Status
 ```bash
 docker compose ps
 ```
 
 All 7 containers will display status `Up` / `Healthy`:
-```text
-NAME                 IMAGE                                STATUS                   PORTS
-nexus-ai-engine      vps_controller-ai-engine             Up (healthy)             0.0.0.0:8001->8001/tcp
-nexus-dashboard      vps_controller-dashboard             Up                       0.0.0.0:3000->3000/tcp
-nexus-grpc-service   vps_controller-spring-grpc-service   Up                       0.0.0.0:8083->8083/tcp, 0.0.0.0:9090->9090/tcp
-nexus-postgres       postgres:16                          Up (healthy)             0.0.0.0:5432->5432/tcp
-nexus-redis          redis:7-alpine                       Up (healthy)             0.0.0.0:6379->6379/tcp
-nexus-rest-service   vps_controller-spring-rest-service   Up                       0.0.0.0:4000->4000/tcp
-nexus-soap-service   vps_controller-spring-soap-service   Up                       0.0.0.0:8082->8082/tcp
-```
+- `nexus-dashboard` (`:3000`)
+- `nexus-rest-service` (`:4000`)
+- `nexus-soap-service` (`:8082`)
+- `nexus-grpc-service` (`:9090`)
+- `nexus-ai-engine` (`:8001`)
+- `nexus-postgres` (`:5432`)
+- `nexus-redis` (`:6379`)
 
-Open your browser at **`http://localhost:3000`** to access the NEXUS Dashboard!
+Access the dashboard at **`http://localhost:3000`**!
 
 ---
 
-## 📡 Service Endpoints & Testing
+## 🧪 Real-World Testing with VirtualBox or Cloud VPS
 
-### 1. REST API (`http://localhost:4000`)
+You can test the complete platform locally using an **Ubuntu Server** VM in Oracle VirtualBox or any cloud VPS (Hetzner, DigitalOcean, AWS):
+
+1. **Network Configuration (VirtualBox):**
+   - Set VM Network Adapter 1 to **Bridged Adapter** so the VM receives an IP on your local LAN (e.g. `192.168.0.x`).
+2. **Register in Dashboard:**
+   - Go to **Infrastructure** ➔ **+ Add Server** ➔ Enter the server IP.
+3. **Run Bootstrap Command:**
+   - Copy the command from the modal and run it in your Ubuntu VM terminal:
+     ```bash
+     curl -sSL http://<HOST_IP>:4000/agent/bootstrap.sh | sudo bash -s -- --server-id <SERVER_UUID> --host <HOST_IP>
+     ```
+4. **Inspect Results:**
+   - The server flips to **ONLINE**.
+   - Live CPU, RAM, Disk, and Journal logs start streaming immediately.
+   - Deploy applications, install Docker, and control firewall ports directly from your browser!
+
+---
+
+## 📡 API & Multi-Protocol Testing
+
 ```bash
-# List all managed servers
+# 1. REST API: List servers
 curl -s http://localhost:4000/api/v1/servers | jq
 
-# Download the standalone Linux agent binary
-curl -s -I http://localhost:4000/agent/nexus-agent
-```
+# 2. REST API: Inspect real-time server telemetry
+curl -s http://localhost:4000/api/v1/servers/<SERVER_ID>/metrics | jq
 
-### 2. SOAP Web Service (`http://localhost:8082`)
-Inspect the generated WSDL contract:
-```bash
+# 3. REST API: Inspect host firewall rules
+curl -s http://localhost:4000/api/v1/servers/<SERVER_ID>/firewall | jq
+
+# 4. SOAP Service: Inspect WSDL contract
 curl -s http://localhost:8082/ws/servers.wsdl
-```
 
-Send a sample SOAP XML request:
-```bash
-curl -X POST http://localhost:8082/ws \
-  -H "Content-Type: text/xml" \
-  -d @- << 'EOF'
-<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
-                  xmlns:sch="http://nexus.com/soap/servers">
-   <soapenv:Header/>
-   <soapenv:Body>
-      <sch:GetServerStatusRequest>
-         <sch:serverId>2c425709-e204-49ed-8e71-9a725135ec21</sch:serverId>
-      </sch:GetServerStatusRequest>
-   </soapenv:Body>
-</soapenv:Envelope>
-EOF
-```
-
-### 3. gRPC High-Throughput Service (`localhost:9090`)
-Inspect services via `grpcurl`:
-```bash
+# 5. gRPC Service: List RPC endpoints via grpcurl
 grpcurl -plaintext localhost:9090 list
-```
 
-### 4. AI Diagnostic Engine (`http://localhost:8001`)
-```bash
+# 6. AI Engine Health
 curl -s http://localhost:8001/health | jq
 ```
-
----
-
-## 🧪 Real-World Testing with VirtualBox (Ubuntu Server)
-
-You can validate the entire end-to-end NEXUS platform locally by creating an **Ubuntu Server** virtual machine in **Oracle VirtualBox** and enrolling it as a managed VPS node.
-
-### 📋 Prerequisites
-- **Oracle VM VirtualBox** (v7.0+) installed on your host system.
-- **Ubuntu Server ISO** ([Ubuntu 22.04 LTS or 24.04 LTS Server](https://ubuntu.com/download/server)).
-- NEXUS AI platform running via Docker Compose on your host machine.
-
----
-
-### Step 1: Create the Ubuntu Server Virtual Machine
-1. Open VirtualBox and click **New**:
-   - **Name:** `nexus-ubuntu-node`
-   - **Type:** `Linux` | **Version:** `Ubuntu (64-bit)`
-   - **Base Memory (RAM):** `2048 MB` (2 GB) minimum (4 GB recommended).
-   - **Processors:** `2 CPUs`.
-   - **Disk Size:** `25 GB` (Dynamic allocation).
-2. Attach the Ubuntu Server ISO to the Optical Drive and proceed with default installation. Ensure **OpenSSH Server** is selected during the installation wizard.
-
----
-
-### Step 2: Configure VirtualBox Network Adapter (Crucial)
-To allow bidirectional communication between the **Host (NEXUS Platform)** and the **Guest (Ubuntu VM)**:
-
-> [!TIP]
-> **Recommended Option: Bridged Networking**
-> In VirtualBox VM Settings ➔ **Network** ➔ **Adapter 1**:
-> - **Attached to:** `Bridged Adapter`
-> - **Name:** Select your active host network interface (e.g., your physical Wi-Fi or Ethernet adapter).
-> - **Promiscuous Mode:** `Allow All`
-> 
-> *Result:* The VM receives its own dedicated local IP (e.g., `192.168.1.85`) directly from your home router, placing both Host and VM on the same subnet.
-
-#### Find Your Host IP & Verify Connectivity
-1. On your **Host Machine**, obtain your local LAN IP:
-   ```bash
-   hostname -I | awk '{print $1}'
-   # Example: 192.168.1.50
-   ```
-2. In your **Ubuntu Server VM**, find the VM IP:
-   ```bash
-   ip a
-   # Look for inet address on enp0s3 (e.g., 192.168.1.85)
-   ```
-3. Test network reachability from the VM:
-   ```bash
-   ping -c 3 <HOST_IP>
-   # Example: ping -c 3 192.168.1.50
-   ```
-
----
-
-### Step 3: Register the Server on the NEXUS Dashboard
-1. Open the NEXUS Dashboard in your browser: **`http://localhost:3000`** (or `http://<HOST_IP>:3000`).
-2. Navigate to the **Infrastructure** view and click **+ Add Server**.
-3. Fill in the details:
-   - **Server Name:** `vbox-ubuntu-01`
-   - **Hostname / IP:** Your VM IP (e.g. `192.168.1.85`)
-   - **Provider:** `VirtualBox / On-Premise`
-4. Click **Create Server**.
-5. Click **Install Agent** on the newly created server card to reveal your custom 1-click bootstrap command:
-   ```bash
-   curl -sSL http://<HOST_IP>:4000/agent/bootstrap.sh | sudo bash -s -- --server-id <GENERATED_SERVER_ID>
-   ```
-
----
-
-### Step 4: Run the Bootstrap Script Inside the Ubuntu Server VM
-Log into your Ubuntu Server VM (via the VirtualBox terminal or via SSH `ssh user@<VM_IP>`), and run:
-
-```bash
-# If accessing from outside localhost, pass your Host IP:
-curl -sSL http://<HOST_IP>:4000/agent/bootstrap.sh | sudo bash -s -- --server-id <GENERATED_SERVER_ID> --host <HOST_IP>
-```
-
-#### What the Bootstrap Installer Automates:
-```text
-[1/4] Preparing directories (/etc/nexus, /var/www, /var/log/nexus, /opt/nexus)...
-[2/4] Downloading nexus-agent binary from http://<HOST_IP>:4000/agent/nexus-agent...
-[3/4] Creating systemd service configuration (/etc/systemd/system/nexus-agent.service)...
-[4/4] Starting nexus-agent service via systemctl...
-[SUCCESS] nexus-agent is running as a systemd service!
-```
-
-Verify the live agent daemon status anytime on the VM:
-```bash
-sudo systemctl status nexus-agent
-```
-
----
-
-### Step 5: Test Platform Capabilities on the Virtual Server
-
-Once enrolled, the VM begins sending periodic telemetry heartbeats:
-
-1. **🟢 Real-Time Online Status:**
-   - Watch the server card in the Dashboard flip from **🔴 Offline** to **🟢 Online** instantly.
-2. **📊 Live Telemetry & Monitoring:**
-   - Click the server to inspect CPU usage, RAM utilization, disk capacity, and agent runtime logs in real-time.
-3. **🗄️ Multi-Server Database Provisioning:**
-   - Go to the **Databases** view.
-   - Filter by `vbox-ubuntu-01` and click **+ Deploy Database**.
-   - Select **MySQL 8.0**, **PostgreSQL 16**, **MongoDB 7**, or **Redis 7**.
-   - The platform dispatches a job to the VM agent to configure and run the managed database container.
-4. **🧠 AI-Driven Autonomous Remediation:**
-   - Simulate a degradation on the VM (e.g. high memory consumption or stopping a service).
-   - The AI reasoning engine flags the anomaly, logs an incident, and surfaces an **Action Proposal** on the Dashboard for 1-click operator approval.
-5. **🚀 Zero-Config App Deployments:**
-   - Go to **Deployments** and dispatch a Git repository deployment to `vbox-ubuntu-01`.
-   - The remote agent clones the repo, auto-detects dependencies (Python/Node/Docker), registers a `systemd` service, and configures an NGINX reverse proxy automatically.
-
----
-
-## 🤖 Smart Framework Auto-Detection (Go Agent)
-
-The **NEXUS Agent** (`agent/nexus-agent`) runs autonomously as a `systemd` daemon on managed remote hosts. When a deployment task is received, it executes intelligent framework inspection:
-
-```mermaid
-flowchart TD
-    GitClone["Git Clone /var/www/<appName>"] --> Detect{"Detect App Structure"}
-
-    Detect -->|requirements.txt OR .py| Python["🐍 Python Framework<br/>(FastAPI / Flask / Django)"]
-    Detect -->|package.json| Node["📦 Node.js Framework<br/>(Express / Nest / Next)"]
-    Detect -->|docker-compose.yml| Compose["🐳 Docker Compose"]
-    Detect -->|index.html| Static["📄 Static HTML / NGINX"]
-
-    Python --> Venv["python3 -m venv venv<br/>pip install -r requirements.txt"]
-    Venv --> Service["Generate /etc/systemd/system/nexus-app-<name>.service<br/>ExecStart: uvicorn main:app --port 8000"]
-    Service --> Proxy["Generate /etc/nginx/sites-available/nexus-<name>.conf<br/>Reverse Proxy: Port 80 -> Port 8000"]
-    Proxy --> Reload["systemctl restart nginx<br/>systemctl enable --now nexus-app-<name>"]
-```
-
----
-
-## 🔒 Security & Multi-Tenancy
-
-1. **Strict Multi-Tenant Scoping:** All operations, metrics, incidents, and jobs require an active `organization_id` header or token context.
-2. **Deterministic Agent Authentication:** Agents authenticate using SHA-256 secret hashes enrolled through 15-minute one-time tokens.
-3. **Human-in-the-Loop AI Guardrails:** The AI diagnostic engine has **zero unattended execution rights**. Remediations must be produced as cryptographic `action_proposals` and explicitly approved by an operator via the dashboard.
-4. **Dynamic IP Adaptation:** The agent bootstrap script and platform URLs resolve hostnames dynamically (`window.location.hostname`), avoiding hardcoded static IP breakage in dynamic DHCP/VPS environments.
 
 ---
 
@@ -325,28 +410,37 @@ flowchart TD
 ```text
 vps_controller/
 ├── dashboard/                     # React 18 + Vite Frontend Application
-│   ├── Dockerfile                 # Multi-stage production NGINX runner
-│   ├── nginx.conf                 # Reverse proxy for API & WebSockets
-│   └── src/                       # React Views, Modals & Components
+│   ├── Dockerfile                 # Alpine NGINX production runner
+│   ├── nginx.conf                 # Internal reverse proxy configuration
+│   └── src/
+│       ├── pages/                 # Operational Views (Infrastructure, Deployments, Monitoring, Security)
+│       └── services/api.ts        # Unified API Client with JWT refresh handling
 ├── services/
-│   ├── ai-engine/                 # Python 3.11 FastAPI Diagnostic Service
+│   ├── ai-engine/                 # Python 3.11 FastAPI Diagnostic Service (Port 8001)
 │   │   ├── Dockerfile
 │   │   └── app/main.py            # AI root cause inference rules & endpoints
-│   └── nexus-backend/             # Spring Boot 3 Multi-Module Platform
+│   └── nexus-backend/             # Spring Boot 3 Multi-Module Platform (Java 21)
 │       ├── pom.xml                # Parent Reactor POM
-│       ├── nexus-common/          # JPA Entities, Repositories & DTOs
-│       ├── nexus-rest-service/    # REST API Microservice (Port 4000)
+│       ├── nexus-common/          # JPA Entities with PostgreSQL JSONB & Repositories
+│       ├── nexus-rest-service/    # REST API & Telemetry Cache (Port 4000)
+│       │   ├── src/main/java/com/nexus/rest/
+│       │   │   ├── controller/    # AgentApiController, ServerController, DeploymentController
+│       │   │   └── service/       # ServerTelemetryService (in-memory cache)
+│       │   └── bin/               # Pre-compiled agent binary distribution
 │       ├── nexus-soap-service/    # SOAP Spring-WS Microservice (Port 8082)
 │       └── nexus-grpc-service/    # gRPC Protobuf Microservice (Port 9090)
 ├── agent/                         # Autonomous Remote Go Agent
-│   ├── dist/nexus-agent           # Compiled binary served via REST API
-│   └── nexus-agent/               # Go source code (metrics, collector, executor)
+│   ├── dist/nexus-agent           # Compiled standalone Linux binary
+│   └── nexus-agent/               # Go source code
+│       ├── cmd/nexus-agent/       # Daemon entrypoint & signal handling
+│       └── internal/
+│           ├── collector/         # /proc/ kernel telemetry & UFW reader
+│           ├── executor/          # Universal deployment & firewall job executor
+│           └── client/            # HTTP/REST communication client
 ├── infrastructure/
-│   └── init.sql                   # Clean PostgreSQL 16 schema & seed data
-├── packages/
-│   └── shared-types/              # Shared TypeScript interfaces
+│   └── init.sql                   # PostgreSQL 16 schema & initial seed data
 ├── docker-compose.yml             # Complete 7-container Docker orchestration
-└── README.md                      # Platform documentation
+└── README.md                      # Comprehensive documentation
 ```
 
 ---
