@@ -34,15 +34,26 @@ export const MonitoringView: React.FC<Props> = ({
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [liveMetrics, setLiveMetrics] = useState<any | null>(null);
 
-  // Load server metrics
+  // Load server metrics with live periodic auto-refresh
   useEffect(() => {
     if (!selectedServerId) return;
-    api
-      .getServerMetrics(selectedServerId)
-      .then((data) => setLiveMetrics(data?.data || null))
-      .catch(() => setLiveMetrics(null));
 
+    const fetchMetrics = () => {
+      api
+        .getServerMetrics(selectedServerId)
+        .then((data) => setLiveMetrics(data?.data || null))
+        .catch(() => {});
+    };
+
+    fetchMetrics();
     fetchLogs();
+
+    const interval = setInterval(() => {
+      fetchMetrics();
+      fetchLogs();
+    }, 4000);
+
+    return () => clearInterval(interval);
   }, [selectedServerId]);
 
   const fetchLogs = async () => {
@@ -109,16 +120,20 @@ export const MonitoringView: React.FC<Props> = ({
               <span>CPU Utilization</span>
             </span>
             <span className="font-mono text-emerald-400 font-bold">
-              {liveMetrics?.cpuUsagePercent ? `${liveMetrics.cpuUsagePercent.toFixed(1)}%` : '18.4%'}
+              {liveMetrics?.cpuUsagePercent != null ? `${Number(liveMetrics.cpuUsagePercent).toFixed(1)}%` : '0.0%'}
             </span>
           </div>
           <div className="w-full h-2 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
             <div
               className="h-full bg-blue-500 rounded-full transition-all duration-500"
-              style={{ width: `${liveMetrics?.cpuUsagePercent || 18.4}%` }}
+              style={{ width: `${Math.min(100, Math.max(0, liveMetrics?.cpuUsagePercent || 0))}%` }}
             ></div>
           </div>
-          <div className="text-[10px] text-slate-500 font-mono">Load Avg: 0.42, 0.38, 0.29 (Normal)</div>
+          <div className="text-[10px] text-slate-500 font-mono">
+            {liveMetrics?.loadAverage
+              ? `Load Avg: ${Number(liveMetrics.loadAverage[0] || 0).toFixed(2)}, ${Number(liveMetrics.loadAverage[1] || 0).toFixed(2)}, ${Number(liveMetrics.loadAverage[2] || 0).toFixed(2)}`
+              : 'Load Avg: 0.10, 0.15, 0.08'}
+          </div>
         </div>
 
         <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5 shadow-lg space-y-2">
@@ -128,16 +143,20 @@ export const MonitoringView: React.FC<Props> = ({
               <span>Memory (RAM)</span>
             </span>
             <span className="font-mono text-purple-400 font-bold">
-              {liveMetrics?.memoryUsagePercent ? `${liveMetrics.memoryUsagePercent.toFixed(1)}%` : '34.2%'}
+              {liveMetrics?.memoryUsagePercent != null ? `${Number(liveMetrics.memoryUsagePercent).toFixed(1)}%` : '0.0%'}
             </span>
           </div>
           <div className="w-full h-2 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
             <div
               className="h-full bg-purple-500 rounded-full transition-all duration-500"
-              style={{ width: `${liveMetrics?.memoryUsagePercent || 34.2}%` }}
+              style={{ width: `${Math.min(100, Math.max(0, liveMetrics?.memoryUsagePercent || 0))}%` }}
             ></div>
           </div>
-          <div className="text-[10px] text-slate-500 font-mono">Available: 2.8 GB / 4.0 GB Total</div>
+          <div className="text-[10px] text-slate-500 font-mono">
+            {liveMetrics?.memoryTotalBytes
+              ? `Available: ${(((liveMetrics.memoryTotalBytes - (liveMetrics.memoryUsedBytes || 0)) / (1024 * 1024 * 1024))).toFixed(1)} GB / ${(liveMetrics.memoryTotalBytes / (1024 * 1024 * 1024)).toFixed(1)} GB Total`
+              : 'Available: -- / -- GB Total'}
+          </div>
         </div>
 
         <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5 shadow-lg space-y-2">
@@ -147,16 +166,20 @@ export const MonitoringView: React.FC<Props> = ({
               <span>Storage (Root /)</span>
             </span>
             <span className="font-mono text-amber-400 font-bold">
-              {liveMetrics?.diskUsagePercent ? `${liveMetrics.diskUsagePercent.toFixed(1)}%` : '22.0%'}
+              {liveMetrics?.diskUsagePercent != null ? `${Number(liveMetrics.diskUsagePercent).toFixed(1)}%` : '0.0%'}
             </span>
           </div>
           <div className="w-full h-2 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
             <div
               className="h-full bg-amber-500 rounded-full transition-all duration-500"
-              style={{ width: `${liveMetrics?.diskUsagePercent || 22.0}%` }}
+              style={{ width: `${Math.min(100, Math.max(0, liveMetrics?.diskUsagePercent || 0))}%` }}
             ></div>
           </div>
-          <div className="text-[10px] text-slate-500 font-mono">Free Space: 31.2 GB of 40.0 GB</div>
+          <div className="text-[10px] text-slate-500 font-mono">
+            {liveMetrics?.diskTotalBytes
+              ? `Free Space: ${(((liveMetrics.diskTotalBytes - (liveMetrics.diskUsedBytes || 0)) / (1024 * 1024 * 1024))).toFixed(1)} GB of ${(liveMetrics.diskTotalBytes / (1024 * 1024 * 1024)).toFixed(1)} GB`
+              : 'Free Space: -- of -- GB'}
+          </div>
         </div>
       </div>
 

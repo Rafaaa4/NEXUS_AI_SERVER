@@ -7,6 +7,7 @@ import com.nexus.common.entity.ServerEntity;
 import com.nexus.common.repository.AgentRepository;
 import com.nexus.common.repository.JobRepository;
 import com.nexus.common.repository.ManagedDatabaseRepository;
+import com.nexus.rest.service.ServerTelemetryService;
 import com.nexus.common.repository.ServerRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
@@ -24,16 +25,19 @@ public class ServerController {
     private final AgentRepository agentRepository;
     private final JobRepository jobRepository;
     private final ManagedDatabaseRepository managedDatabaseRepository;
+    private final ServerTelemetryService serverTelemetryService;
     private final ObjectMapper objectMapper;
 
     public ServerController(ServerRepository serverRepository,
                             AgentRepository agentRepository,
                             JobRepository jobRepository,
-                            ManagedDatabaseRepository managedDatabaseRepository) {
+                            ManagedDatabaseRepository managedDatabaseRepository,
+                            ServerTelemetryService serverTelemetryService) {
         this.serverRepository = serverRepository;
         this.agentRepository = agentRepository;
         this.jobRepository = jobRepository;
         this.managedDatabaseRepository = managedDatabaseRepository;
+        this.serverTelemetryService = serverTelemetryService;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -173,26 +177,16 @@ public class ServerController {
     public ResponseEntity<?> getServerMetrics(@PathVariable UUID id) {
         return ResponseEntity.ok(Map.of(
             "success", true,
-            "data", Map.of(
-                "serverId", id.toString(),
-                "cpuUsage", 18.5,
-                "memoryUsage", 42.1,
-                "diskUsage", 37.8,
-                "networkIn", 2048,
-                "networkOut", 4096,
-                "timestamp", OffsetDateTime.now().toString()
-            )
+            "data", serverTelemetryService.getMetrics(id)
         ));
     }
 
     @GetMapping("/{id}/logs")
     public ResponseEntity<?> getServerLogs(@PathVariable UUID id, @RequestParam(defaultValue = "50") int limit) {
-        List<Map<String, Object>> sampleLogs = List.of(
-            Map.of("id", UUID.randomUUID().toString(), "timestamp", OffsetDateTime.now().minusMinutes(2).toString(), "level", "info", "source", "systemd", "message", "Nexus Node Agent heartbeat service active"),
-            Map.of("id", UUID.randomUUID().toString(), "timestamp", OffsetDateTime.now().minusMinutes(1).toString(), "level", "info", "source", "kernel", "message", "Telemetry stream synchronized with gRPC backend"),
-            Map.of("id", UUID.randomUUID().toString(), "timestamp", OffsetDateTime.now().toString(), "level", "info", "source", "agent", "message", "Security baseline and container checks normal")
-        );
-        return ResponseEntity.ok(Map.of("success", true, "data", sampleLogs));
+        return ResponseEntity.ok(Map.of(
+            "success", true,
+            "data", serverTelemetryService.getLogs(id, limit)
+        ));
     }
 
     @PostMapping("/{id}/run-command")

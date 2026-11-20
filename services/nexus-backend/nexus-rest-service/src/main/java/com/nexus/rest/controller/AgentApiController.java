@@ -8,6 +8,7 @@ import com.nexus.common.repository.AgentRepository;
 import com.nexus.common.repository.DeploymentRepository;
 import com.nexus.common.repository.JobRepository;
 import com.nexus.common.repository.ServerRepository;
+import com.nexus.rest.service.ServerTelemetryService;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -27,16 +28,19 @@ public class AgentApiController {
     private final ServerRepository serverRepository;
     private final JobRepository jobRepository;
     private final DeploymentRepository deploymentRepository;
+    private final ServerTelemetryService serverTelemetryService;
     private final ObjectMapper objectMapper;
 
     public AgentApiController(AgentRepository agentRepository,
                               ServerRepository serverRepository,
                               JobRepository jobRepository,
-                              DeploymentRepository deploymentRepository) {
+                              DeploymentRepository deploymentRepository,
+                              ServerTelemetryService serverTelemetryService) {
         this.agentRepository = agentRepository;
         this.serverRepository = serverRepository;
         this.jobRepository = jobRepository;
         this.deploymentRepository = deploymentRepository;
+        this.serverTelemetryService = serverTelemetryService;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -283,6 +287,23 @@ public class AgentApiController {
                     s.setStatus("online");
                     serverRepository.save(s);
                 });
+                serverTelemetryService.recordMetrics(serverId, metrics);
+            } catch (Exception ignored) {}
+        }
+        return ResponseEntity.ok(Map.of("success", true, "data", Map.of("received", true)));
+    }
+
+    @PostMapping(value = {"/agent/v1/logs", "/api/v1/agent/logs"})
+    @SuppressWarnings("unchecked")
+    public ResponseEntity<?> receiveLogs(@RequestHeader(value = "x-server-id", required = false) String serverHeader,
+                                         @RequestBody Map<String, Object> body) {
+        if (serverHeader != null && !serverHeader.isEmpty()) {
+            try {
+                UUID serverId = UUID.fromString(serverHeader);
+                Object logsObj = body.get("logs");
+                if (logsObj instanceof List) {
+                    serverTelemetryService.appendLogs(serverId, (List<Map<String, Object>>) logsObj);
+                }
             } catch (Exception ignored) {}
         }
         return ResponseEntity.ok(Map.of("success", true, "data", Map.of("received", true)));

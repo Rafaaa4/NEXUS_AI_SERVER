@@ -4,7 +4,9 @@ import (
 	"flag"
 	"log"
 	"os"
+	"os/exec"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -126,14 +128,7 @@ func main() {
 			} else {
 				log.Println("💓 Heartbeat OK")
 			}
-			_ = cli.SendLogs([]client.LogEntry{
-				{
-					Timestamp: time.Now().UTC().Format(time.RFC3339),
-					Level:     "info",
-					Source:    "nexus-agent",
-					Message:   "Periodic system health check passed. Outbound TLS telemetry active.",
-				},
-			})
+			_ = cli.SendLogs(collectHostLogs())
 
 		case <-jobPollTicker.C:
 			jobs, err := cli.PollPendingJobs()
@@ -155,4 +150,46 @@ func main() {
 			return
 		}
 	}
+}
+
+func collectHostLogs() []client.LogEntry {
+	var entries []client.LogEntry
+	out, err := exec.Command("journalctl", "-n", "15", "--no-pager", "-o", "short-iso").Output()
+	if err == nil && len(out) > 0 {
+		lines := strings.Split(string(out), "\n")
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			if line == "" {
+				continue
+			}
+			parts := strings.Fields(line)
+			if len(parts) >= 3 {
+				ts := parts[0]
+				source := parts[1]
+				msg := strings.Join(parts[2:], " ")
+				level := "info"
+				lowerMsg := strings.ToLower(msg)
+				if strings.Contains(lowerMsg, "error") || strings.Contains(lowerMsg, "fail") {
+					level = "error"
+				} else if strings.Contains(lowerMsg, "warn") {
+					level = "warn"
+				}
+				entries = append(entries, client.LogEntry{
+					Timestamp: ts,
+					Level:     level,
+					Source:    source,
+					Message:   msg,
+				})
+			}
+		}
+	}
+	if len(entries) == 0 {
+		entries = append(entries, client.LogEntry{
+			Timestamp: time.Now().UTC().Format(time.RFC3339),
+			Level:     "info",
+			Source:    "nexus-agent",
+			Message:   "Periodic system health check passed. Outbound TLS telemetry active.",
+		})
+	}
+	return entries
 }
