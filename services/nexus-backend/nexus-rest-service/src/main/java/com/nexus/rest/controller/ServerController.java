@@ -5,6 +5,7 @@ import com.nexus.common.entity.JobEntity;
 import com.nexus.common.entity.ServerEntity;
 import com.nexus.common.repository.AgentRepository;
 import com.nexus.common.repository.JobRepository;
+import com.nexus.common.repository.ManagedDatabaseRepository;
 import com.nexus.common.repository.ServerRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
@@ -21,13 +22,16 @@ public class ServerController {
     private final ServerRepository serverRepository;
     private final AgentRepository agentRepository;
     private final JobRepository jobRepository;
+    private final ManagedDatabaseRepository managedDatabaseRepository;
 
     public ServerController(ServerRepository serverRepository,
                             AgentRepository agentRepository,
-                            JobRepository jobRepository) {
+                            JobRepository jobRepository,
+                            ManagedDatabaseRepository managedDatabaseRepository) {
         this.serverRepository = serverRepository;
         this.agentRepository = agentRepository;
         this.jobRepository = jobRepository;
+        this.managedDatabaseRepository = managedDatabaseRepository;
     }
 
     public record CreateServerRequest(String name, String hostname, String provider) {}
@@ -104,6 +108,24 @@ public class ServerController {
             "name", server.getName(),
             "status", server.getStatus()
         )));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteServer(
+            @PathVariable UUID id,
+            @RequestHeader(value = "x-organization-id", required = false) String orgHeader) {
+        return serverRepository.findById(id).map(server -> {
+            try {
+                var dbs = managedDatabaseRepository.findByOrganizationIdAndServerId(server.getOrganizationId(), id);
+                managedDatabaseRepository.deleteAll(dbs);
+            } catch (Exception ignored) {}
+
+            serverRepository.delete(server);
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "data", Map.of("id", id.toString(), "deleted", true, "message", "Server deleted successfully")
+            ));
+        }).orElse(ResponseEntity.notFound().build());
     }
 
     @PostMapping(value = {"/{id}/enrollment-token", "/{id}/install-command"})

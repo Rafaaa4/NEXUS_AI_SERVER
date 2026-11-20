@@ -21,8 +21,10 @@ import {
   Play,
   Copy,
   AlertCircle,
+  Trash2,
 } from 'lucide-react';
 import { ActionProposal, api } from '../../services/api';
+import { ConfirmActionModal } from '../../components/ConfirmActionModal';
 
 interface Props {
   servers: any[];
@@ -33,6 +35,7 @@ interface Props {
   onShowInstallCmd: (serverId: string) => void;
   onGenerateBaselines: (serverId: string) => void;
   onApproveProposal: (proposal: ActionProposal) => void;
+  onServerDeleted?: () => void;
 }
 
 export const InfrastructureView: React.FC<Props> = ({
@@ -44,11 +47,16 @@ export const InfrastructureView: React.FC<Props> = ({
   onShowInstallCmd,
   onGenerateBaselines,
   onApproveProposal,
+  onServerDeleted,
 }) => {
   const { isBusiness } = useMode();
   const [filter, setFilter] = useState<'all' | 'online' | 'pending'>('all');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Delete server modal state
+  const [serverToDelete, setServerToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Web Terminal modal state
   const [terminalServer, setTerminalServer] = useState<any | null>(null);
@@ -158,6 +166,23 @@ export const InfrastructureView: React.FC<Props> = ({
     } catch (err: any) {
       setExecutingCmd(false);
       setTerminalOutput((prev) => prev + `\n[Failed]: ${err.message}\n`);
+    }
+  };
+
+  const handleDeleteServerConfirm = async () => {
+    if (!serverToDelete) return;
+    setDeleting(true);
+    try {
+      await api.deleteServer(serverToDelete.id);
+      setToastMessage({ type: 'success', text: `Server "${serverToDelete.name}" deleted successfully.` });
+      setServerToDelete(null);
+      if (onServerDeleted) {
+        onServerDeleted();
+      }
+    } catch (err: any) {
+      setToastMessage({ type: 'error', text: err.message || 'Failed to delete server.' });
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -326,6 +351,15 @@ export const InfrastructureView: React.FC<Props> = ({
                         <span>Install Agent</span>
                       </button>
                     )}
+
+                    <button
+                      onClick={() => setServerToDelete({ id: server.id, name: server.name })}
+                      className="px-3 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-xl text-xs font-semibold transition flex items-center space-x-1.5"
+                      title={`Delete server ${server.name}`}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      <span>Delete</span>
+                    </button>
                   </div>
                 </div>
 
@@ -631,6 +665,20 @@ export const InfrastructureView: React.FC<Props> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Delete Server Confirmation Modal */}
+      {serverToDelete && (
+        <ConfirmActionModal
+          isOpen={true}
+          title={`Delete Server: ${serverToDelete.name}`}
+          description={`Are you sure you want to permanently delete "${serverToDelete.name}"? This action will remove the server, terminate telemetry collection, clean up databases, and unregister it from your infrastructure fleet.`}
+          riskLevel="high"
+          confirmLabel={deleting ? 'Deleting...' : 'Delete Server'}
+          loading={deleting}
+          onConfirm={handleDeleteServerConfirm}
+          onClose={() => setServerToDelete(null)}
+        />
       )}
     </div>
   );

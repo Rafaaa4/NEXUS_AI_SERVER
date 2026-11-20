@@ -226,6 +226,12 @@ class ApiService {
     });
   }
 
+  async deleteServer(id: string) {
+    return this.request<{ id: string; deleted: boolean }> (`/servers/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
   async generateEnrollmentToken(serverId: string) {
     return this.request<{
       token: string;

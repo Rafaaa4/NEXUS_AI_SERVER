@@ -270,6 +270,7 @@ export const Dashboard: React.FC = () => {
               onShowInstallCmd={handleShowInstallCmd}
               onGenerateBaselines={handleGenerateBaselines}
               onApproveProposal={handleApprove}
+              onServerDeleted={fetchData}
             />
           )}
 
