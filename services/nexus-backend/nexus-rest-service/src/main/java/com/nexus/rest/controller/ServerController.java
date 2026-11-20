@@ -106,11 +106,24 @@ public class ServerController {
         )));
     }
 
-    @PostMapping("/{id}/install-command")
+    @PostMapping(value = {"/{id}/enrollment-token", "/{id}/install-command"})
     public ResponseEntity<?> getInstallCommand(@PathVariable UUID id, HttpServletRequest request) {
         String host = request.getServerName();
-        String installCmd = String.format("curl -sSL http://%s:4000/agent/bootstrap.sh | sudo bash -s -- --server-id %s", host, id);
-        return ResponseEntity.ok(Map.of("success", true, "data", Map.of("installCommand", installCmd)));
+        if (host == null || host.isEmpty() || host.equals("0.0.0.0")) {
+            host = "localhost";
+        }
+        String installCmd = String.format("curl -sSL http://%s:4000/agent/bootstrap.sh | sudo bash -s -- --server-id %s --host %s", host, id, host);
+        return ResponseEntity.ok(Map.of("success", true, "data", Map.of(
+            "token", UUID.randomUUID().toString(),
+            "serverId", id.toString(),
+            "expiresAt", OffsetDateTime.now().plusMinutes(15).toString(),
+            "installCommand", installCmd
+        )));
+    }
+
+    @PostMapping("/{id}/baseline-proposals")
+    public ResponseEntity<?> generateBaselineProposals(@PathVariable UUID id) {
+        return ResponseEntity.ok(Map.of("success", true, "data", List.of()));
     }
 
     @PostMapping("/{id}/update-agent")
