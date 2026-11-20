@@ -5,6 +5,7 @@ interface AuthContextType {
   user: User | null;
   organizations: Organization[];
   currentOrg: Organization | null;
+  isViewer: boolean;
   setCurrentOrg: (org: Organization) => void;
   refreshUserOrgs: () => Promise<Organization[]>;
   login: (token: string, refresh: string, user: User, orgs: Organization[]) => void;
@@ -93,12 +94,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCurrentOrgState(null);
   };
 
+  const isViewer = currentOrg?.role?.toLowerCase() === 'viewer';
+
   return (
     <AuthContext.Provider
       value={{
         user,
         organizations,
         currentOrg,
+        isViewer,
         setCurrentOrg,
         refreshUserOrgs,
         login,

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { api } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 import {
   Boxes,
   Play,
@@ -13,6 +14,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   DownloadCloud,
+  Lock,
 } from 'lucide-react';
 
 interface Props {
@@ -21,6 +23,7 @@ interface Props {
 }
 
 export const DockerView: React.FC<Props> = ({ servers, applications }) => {
+  const { isViewer } = useAuth();
   const [selectedServerId, setSelectedServerId] = useState(servers[0]?.id || '');
   const [activeLogsContainer, setActiveLogsContainer] = useState<string | null>(null);
   const [installingDocker, setInstallingDocker] = useState(false);
@@ -94,15 +97,26 @@ export const DockerView: React.FC<Props> = ({ servers, applications }) => {
             </div>
           )}
 
-          <button
-            onClick={handleInstallDocker}
-            disabled={installingDocker || !selectedServerId}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl text-xs font-semibold flex items-center space-x-2 shadow-lg shadow-blue-600/25 transition"
-            title="Install or verify Docker Engine and Docker Compose v2 on the selected server"
-          >
-            <DownloadCloud className={`h-4 w-4 ${installingDocker ? 'animate-bounce' : ''}`} />
-            <span>{installingDocker ? 'Dispatching...' : 'Install Docker on Server'}</span>
-          </button>
+          {isViewer ? (
+            <button
+              disabled
+              className="px-4 py-2 bg-slate-800 text-slate-500 border border-slate-700/60 rounded-xl text-xs font-semibold flex items-center space-x-2 cursor-not-allowed opacity-75"
+              title="Action blocked: Viewers have read-only access"
+            >
+              <Lock className="h-4 w-4 text-amber-500" />
+              <span>Install Docker (Locked)</span>
+            </button>
+          ) : (
+            <button
+              onClick={handleInstallDocker}
+              disabled={installingDocker || !selectedServerId}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl text-xs font-semibold flex items-center space-x-2 shadow-lg shadow-blue-600/25 transition"
+              title="Install or verify Docker Engine and Docker Compose v2 on the selected server"
+            >
+              <DownloadCloud className={`h-4 w-4 ${installingDocker ? 'animate-bounce' : ''}`} />
+              <span>{installingDocker ? 'Dispatching...' : 'Install Docker on Server'}</span>
+            </button>
+          )}
         </div>
       </div>
 

@@ -12,6 +12,7 @@ import {
   Eye,
   Key,
   Info,
+  Lock,
 } from 'lucide-react';
 import { api, Organization } from '../../services/api';
 import { InviteMemberModal } from '../../components/InviteMemberModal';
@@ -152,13 +153,22 @@ export const TeamView: React.FC<Props> = ({ currentOrg }) => {
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
 
-          {isOwnerOrAdmin && (
+          {isOwnerOrAdmin ? (
             <button
               onClick={() => setIsInviteOpen(true)}
               className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-blue-600/25 flex items-center space-x-2 transition"
             >
               <UserPlus className="h-4 w-4" />
               <span>Invite Employee</span>
+            </button>
+          ) : (
+            <button
+              disabled
+              className="px-4 py-2.5 bg-slate-800 text-slate-500 rounded-xl text-xs font-semibold border border-slate-700/60 flex items-center space-x-2 cursor-not-allowed"
+              title="Only Owners and Admins can invite team members"
+            >
+              <Lock className="h-4 w-4 text-amber-500" />
+              <span>Invite Locked (Viewer)</span>
             </button>
           )}
         </div>

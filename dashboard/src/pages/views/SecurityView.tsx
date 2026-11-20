@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import {
   ShieldCheck,
   ShieldAlert,
@@ -33,6 +34,7 @@ interface FirewallRule {
 }
 
 export const SecurityView: React.FC<Props> = ({ auditLogs, servers }) => {
+  const { isViewer } = useAuth();
   const [selectedServerId, setSelectedServerId] = useState(servers[0]?.id || '');
   const [firewall, setFirewall] = useState<{ status: string; rules: FirewallRule[] }>({
     status: 'active',
@@ -218,62 +220,69 @@ export const SecurityView: React.FC<Props> = ({ auditLogs, servers }) => {
           </p>
 
           {/* Form to Open a New Custom Port */}
-          <form onSubmit={handleAddCustomPort} className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex flex-wrap items-center gap-2">
-            <span className="text-xs text-slate-300 font-semibold flex items-center space-x-1.5">
-              <Plus className="h-3.5 w-3.5 text-blue-400" />
-              <span>Open New Port:</span>
-            </span>
-            <input
-              type="number"
-              placeholder="e.g. 3000, 8080"
-              value={newPort}
-              onChange={(e) => setNewPort(e.target.value)}
-              className="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-white placeholder-slate-500 font-mono focus:outline-none focus:border-blue-500 w-32"
-              required
-            />
-            <select
-              value={newProto}
-              onChange={(e) => setNewProto(e.target.value)}
-              className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-xs text-white font-mono focus:outline-none cursor-pointer"
-            >
-              <option value="tcp">TCP</option>
-              <option value="udp">UDP</option>
-            </select>
-            <button
-              type="submit"
-              disabled={actionLoading !== null}
-              className="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition disabled:opacity-50"
-            >
-              <Unlock className="h-3.5 w-3.5" />
-              <span>Open Port</span>
-            </button>
-
-            {/* Quick Presets */}
-            <div className="flex items-center space-x-1.5 ml-auto text-[11px] text-slate-400">
-              <span className="hidden sm:inline">Quick:</span>
-              <button
-                type="button"
-                onClick={() => handleAllowPort('3000', 'tcp')}
-                className="px-2 py-0.5 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 rounded font-mono transition"
-              >
-                + 3000
-              </button>
-              <button
-                type="button"
-                onClick={() => handleAllowPort('8080', 'tcp')}
-                className="px-2 py-0.5 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 rounded font-mono transition"
-              >
-                + 8080
-              </button>
-              <button
-                type="button"
-                onClick={() => handleAllowPort('5432', 'tcp')}
-                className="px-2 py-0.5 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 rounded font-mono transition"
-              >
-                + 5432
-              </button>
+          {isViewer ? (
+            <div className="bg-amber-500/5 border border-amber-500/20 p-3 rounded-xl flex items-center space-x-2 text-xs text-amber-300">
+              <Lock className="h-4 w-4 text-amber-400 shrink-0" />
+              <span>Firewall rule modifications & port toggles are locked for Viewer role (Read-Only).</span>
             </div>
-          </form>
+          ) : (
+            <form onSubmit={handleAddCustomPort} className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex flex-wrap items-center gap-2">
+              <span className="text-xs text-slate-300 font-semibold flex items-center space-x-1.5">
+                <Plus className="h-3.5 w-3.5 text-blue-400" />
+                <span>Open New Port:</span>
+              </span>
+              <input
+                type="number"
+                placeholder="e.g. 3000, 8080"
+                value={newPort}
+                onChange={(e) => setNewPort(e.target.value)}
+                className="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-white placeholder-slate-500 font-mono focus:outline-none focus:border-blue-500 w-32"
+                required
+              />
+              <select
+                value={newProto}
+                onChange={(e) => setNewProto(e.target.value)}
+                className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-xs text-white font-mono focus:outline-none cursor-pointer"
+              >
+                <option value="tcp">TCP</option>
+                <option value="udp">UDP</option>
+              </select>
+              <button
+                type="submit"
+                disabled={actionLoading !== null}
+                className="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition disabled:opacity-50"
+              >
+                <Unlock className="h-3.5 w-3.5" />
+                <span>Open Port</span>
+              </button>
+
+              {/* Quick Presets */}
+              <div className="flex items-center space-x-1.5 ml-auto text-[11px] text-slate-400">
+                <span className="hidden sm:inline">Quick:</span>
+                <button
+                  type="button"
+                  onClick={() => handleAllowPort('3000', 'tcp')}
+                  className="px-2 py-0.5 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 rounded font-mono transition"
+                >
+                  + 3000
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleAllowPort('8080', 'tcp')}
+                  className="px-2 py-0.5 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 rounded font-mono transition"
+                >
+                  + 8080
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleAllowPort('5432', 'tcp')}
+                  className="px-2 py-0.5 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 rounded font-mono transition"
+                >
+                  + 5432
+                </button>
+              </div>
+            </form>
+          )}
 
           {/* List of Managed Ports */}
           <div className="space-y-2 text-xs font-mono max-h-72 overflow-y-auto pr-1">
@@ -314,26 +323,28 @@ export const SecurityView: React.FC<Props> = ({ auditLogs, servers }) => {
                       {isAllowed ? 'OPEN (ALLOWED)' : 'CLOSED (BLOCKED)'}
                     </span>
 
-                    {isAllowed ? (
-                      <button
-                        onClick={() => handleDenyPort(rule.port, rule.protocol)}
-                        disabled={isLoading}
-                        className="px-2.5 py-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-lg text-[11px] font-semibold flex items-center space-x-1 transition disabled:opacity-50"
-                        title="Close port in firewall"
-                      >
-                        {isLoading ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Lock className="h-3 w-3" />}
-                        <span>Close Port</span>
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => handleAllowPort(rule.port, rule.protocol)}
-                        disabled={isLoading}
-                        className="px-2.5 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-[11px] font-semibold flex items-center space-x-1 transition disabled:opacity-50"
-                        title="Open port in firewall"
-                      >
-                        {isLoading ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Unlock className="h-3 w-3" />}
-                        <span>Open Port</span>
-                      </button>
+                    {!isViewer && (
+                      isAllowed ? (
+                        <button
+                          onClick={() => handleDenyPort(rule.port, rule.protocol)}
+                          disabled={isLoading}
+                          className="px-2.5 py-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-lg text-[11px] font-semibold flex items-center space-x-1 transition disabled:opacity-50"
+                          title="Close port in firewall"
+                        >
+                          {isLoading ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Lock className="h-3 w-3" />}
+                          <span>Close Port</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleAllowPort(rule.port, rule.protocol)}
+                          disabled={isLoading}
+                          className="px-2.5 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-[11px] font-semibold flex items-center space-x-1 transition disabled:opacity-50"
+                          title="Open port in firewall"
+                        >
+                          {isLoading ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Unlock className="h-3 w-3" />}
+                          <span>Open Port</span>
+                        </button>
+                      )
                     )}
                   </div>
                 </div>

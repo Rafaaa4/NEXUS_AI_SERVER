@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useMode } from '../../context/ModeContext';
+import { useAuth } from '../../context/AuthContext';
 import {
   Server as ServerIcon,
   HardDrive,
@@ -22,6 +23,7 @@ import {
   Copy,
   AlertCircle,
   Trash2,
+  Lock,
 } from 'lucide-react';
 import { ActionProposal, api } from '../../services/api';
 import { ConfirmActionModal } from '../../components/ConfirmActionModal';
@@ -50,6 +52,7 @@ export const InfrastructureView: React.FC<Props> = ({
   onServerDeleted,
 }) => {
   const { isBusiness } = useMode();
+  const { isViewer } = useAuth();
   const [filter, setFilter] = useState<'all' | 'online' | 'pending'>('all');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -209,13 +212,24 @@ export const InfrastructureView: React.FC<Props> = ({
           </p>
         </div>
 
-        <button
-          onClick={onOpenAddServer}
-          className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-blue-600/25 flex items-center space-x-2 transition shrink-0"
-        >
-          <Plus className="h-4 w-4" />
-          <span>Connect New VPS</span>
-        </button>
+        {isViewer ? (
+          <button
+            disabled
+            className="px-4 py-2.5 bg-slate-800/80 text-slate-500 border border-slate-700/60 rounded-xl text-xs font-semibold flex items-center space-x-2 cursor-not-allowed opacity-75 shrink-0"
+            title="Action blocked: Viewers have read-only access"
+          >
+            <Lock className="h-4 w-4 text-amber-500" />
+            <span>Connect Host (Locked)</span>
+          </button>
+        ) : (
+          <button
+            onClick={onOpenAddServer}
+            className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-blue-600/25 flex items-center space-x-2 transition shrink-0"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Connect New VPS</span>
+          </button>
+        )}
       </div>
 
       {/* Filter Tabs */}
@@ -318,20 +332,35 @@ export const InfrastructureView: React.FC<Props> = ({
                   <div className="flex items-center space-x-2">
                     {server.status === 'online' && (
                       <>
-                        <button
-                          onClick={() => onDeployApp({ id: server.id, name: server.name })}
-                          className="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold transition flex items-center space-x-1.5 shadow-md shadow-blue-600/25"
-                        >
-                          <Rocket className="h-3.5 w-3.5" />
-                          <span>Deploy App</span>
-                        </button>
-                        <button
-                          onClick={() => onGenerateBaselines(server.id)}
-                          className="px-3.5 py-2 bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 rounded-xl text-xs font-semibold transition flex items-center space-x-1.5 border border-purple-500/30"
-                        >
-                          <Zap className="h-3.5 w-3.5 text-purple-400" />
-                          <span>Setup Stacks</span>
-                        </button>
+                        {isViewer ? (
+                          <button
+                            disabled
+                            className="px-3 py-1.5 bg-slate-800 text-slate-500 rounded-xl text-xs font-semibold flex items-center space-x-1.5 cursor-not-allowed border border-slate-700/60"
+                            title="Action blocked: Viewers have read-only access"
+                          >
+                            <Lock className="h-3.5 w-3.5 text-amber-500" />
+                            <span>Deploy (Locked)</span>
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => onDeployApp({ id: server.id, name: server.name })}
+                            className="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold transition flex items-center space-x-1.5 shadow-md shadow-blue-600/25"
+                          >
+                            <Rocket className="h-3.5 w-3.5" />
+                            <span>Deploy App</span>
+                          </button>
+                        )}
+
+                        {!isViewer && (
+                          <button
+                            onClick={() => onGenerateBaselines(server.id)}
+                            className="px-3.5 py-2 bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 rounded-xl text-xs font-semibold transition flex items-center space-x-1.5 border border-purple-500/30"
+                          >
+                            <Zap className="h-3.5 w-3.5 text-purple-400" />
+                            <span>Setup Stacks</span>
+                          </button>
+                        )}
+
                         <button
                           onClick={() => onOpenLogs({ id: server.id, name: server.name })}
                           className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-medium transition flex items-center space-x-1.5 border border-slate-700/60"
@@ -343,83 +372,103 @@ export const InfrastructureView: React.FC<Props> = ({
                     )}
 
                     {server.status === 'pending' && (
-                      <button
-                        onClick={() => onShowInstallCmd(server.id)}
-                        className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-medium transition flex items-center space-x-1.5 border border-slate-700/60"
-                      >
-                        <Terminal className="h-3.5 w-3.5 text-blue-400" />
-                        <span>Install Agent</span>
-                      </button>
+                      isViewer ? (
+                        <button
+                          disabled
+                          className="px-3 py-1.5 bg-slate-800 text-slate-500 rounded-xl text-xs font-semibold flex items-center space-x-1.5 cursor-not-allowed border border-slate-700/60"
+                          title="Action blocked: Viewers have read-only access"
+                        >
+                          <Lock className="h-3.5 w-3.5 text-amber-500" />
+                          <span>Install (Locked)</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => onShowInstallCmd(server.id)}
+                          className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-medium transition flex items-center space-x-1.5 border border-slate-700/60"
+                        >
+                          <Terminal className="h-3.5 w-3.5 text-blue-400" />
+                          <span>Install Agent</span>
+                        </button>
+                      )
                     )}
 
-                    <button
-                      onClick={() => setServerToDelete({ id: server.id, name: server.name })}
-                      className="px-3 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-xl text-xs font-semibold transition flex items-center space-x-1.5"
-                      title={`Delete server ${server.name}`}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                      <span>Delete</span>
-                    </button>
+                    {!isViewer && (
+                      <button
+                        onClick={() => setServerToDelete({ id: server.id, name: server.name })}
+                        className="px-3 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-xl text-xs font-semibold transition flex items-center space-x-1.5"
+                        title={`Delete server ${server.name}`}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        <span>Delete</span>
+                      </button>
+                    )}
                   </div>
                 </div>
 
                 {/* Quick Server Maintenance & Operations Bar */}
                 {server.status === 'online' && (
-                  <div className="flex flex-wrap items-center gap-2 pt-2.5 pb-1 border-t border-slate-800/60 text-xs">
-                    <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mr-1">Quick Tools:</span>
-                    <button
-                      onClick={() => handleFreeRam(server.id)}
-                      disabled={actionLoading === `ram-${server.id}`}
-                      className="px-2.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-medium flex items-center space-x-1.5 transition disabled:opacity-50"
-                      title="Drop pagecache, inodes, and purge temp files"
-                    >
-                      <Activity className="h-3.5 w-3.5" />
-                      <span>{actionLoading === `ram-${server.id}` ? 'Clearing...' : '🧹 Free RAM & Cache'}</span>
-                    </button>
+                  isViewer ? (
+                    <div className="flex items-center space-x-2 py-2 px-3 bg-amber-500/5 border border-amber-500/20 rounded-xl text-xs text-amber-300/80">
+                      <Lock className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+                      <span>Host commands, cache flushing, and systemd maintenance tools are blocked in Viewer mode.</span>
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap items-center gap-2 pt-2.5 pb-1 border-t border-slate-800/60 text-xs">
+                      <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mr-1">Quick Tools:</span>
+                      <button
+                        onClick={() => handleFreeRam(server.id)}
+                        disabled={actionLoading === `ram-${server.id}`}
+                        className="px-2.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-medium flex items-center space-x-1.5 transition disabled:opacity-50"
+                        title="Drop pagecache, inodes, and purge temp files"
+                      >
+                        <Activity className="h-3.5 w-3.5" />
+                        <span>{actionLoading === `ram-${server.id}` ? 'Clearing...' : '🧹 Free RAM & Cache'}</span>
+                      </button>
 
-                    <button
-                      onClick={() => handleUpdateAgent(server.id)}
-                      disabled={actionLoading === `update-${server.id}`}
-                      className="px-2.5 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-lg text-xs font-medium flex items-center space-x-1.5 transition disabled:opacity-50"
-                      title="1-Click Update: Downloads newest binary and restarts agent using dynamic IP"
-                    >
-                      <Rocket className="h-3.5 w-3.5" />
-                      <span>{actionLoading === `update-${server.id}` ? 'Updating...' : '🚀 1-Click Update Agent'}</span>
-                    </button>
+                      <button
+                        onClick={() => handleUpdateAgent(server.id)}
+                        disabled={actionLoading === `update-${server.id}`}
+                        className="px-2.5 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-lg text-xs font-medium flex items-center space-x-1.5 transition disabled:opacity-50"
+                        title="1-Click Update: Downloads newest binary and restarts agent using dynamic IP"
+                      >
+                        <Rocket className="h-3.5 w-3.5" />
+                        <span>{actionLoading === `update-${server.id}` ? 'Updating...' : '🚀 1-Click Update Agent'}</span>
+                      </button>
 
-                    <button
-                      onClick={() => handleInstallService(server.id)}
-                      disabled={actionLoading === `service-${server.id}`}
-                      className="px-2.5 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-lg text-xs font-medium flex items-center space-x-1.5 transition disabled:opacity-50"
-                      title="Install nexus-agent as a systemd service that auto-starts on boot"
-                    >
-                      <Zap className="h-3.5 w-3.5" />
-                      <span>{actionLoading === `service-${server.id}` ? 'Configuring...' : '⚡ Install 24/7 Service (systemd)'}</span>
-                    </button>
+                      <button
+                        onClick={() => handleInstallService(server.id)}
+                        disabled={actionLoading === `service-${server.id}`}
+                        className="px-2.5 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-lg text-xs font-medium flex items-center space-x-1.5 transition disabled:opacity-50"
+                        title="Install nexus-agent as a systemd service that auto-starts on boot"
+                      >
+                        <Zap className="h-3.5 w-3.5" />
+                        <span>{actionLoading === `service-${server.id}` ? 'Configuring...' : '⚡ Install 24/7 Service (systemd)'}</span>
+                      </button>
 
-                    <button
-                      onClick={() => handleRestartNginx(server.id)}
-                      disabled={actionLoading === `nginx-${server.id}`}
-                      className="px-2.5 py-1.5 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 rounded-lg text-xs font-medium flex items-center space-x-1.5 transition disabled:opacity-50"
-                      title="Reload / Restart NGINX web server"
-                    >
-                      <RefreshCw className="h-3.5 w-3.5" />
-                      <span>{actionLoading === `nginx-${server.id}` ? 'Restarting...' : '🔄 Restart NGINX'}</span>
-                    </button>
+                      <button
+                        onClick={() => handleRestartNginx(server.id)}
+                        disabled={actionLoading === `nginx-${server.id}`}
+                        className="px-2.5 py-1.5 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 rounded-lg text-xs font-medium flex items-center space-x-1.5 transition disabled:opacity-50"
+                        title="Reload / Restart NGINX web server"
+                      >
+                        <RefreshCw className="h-3.5 w-3.5" />
+                        <span>{actionLoading === `nginx-${server.id}` ? 'Restarting...' : '🔄 Restart NGINX'}</span>
+                      </button>
 
-                    <button
-                      onClick={() => {
-                        setTerminalServer(server);
-                        setTerminalCmd('free -h');
-                        setTerminalOutput(`Connected to ${server.name} (${server.hostname || 'VPS'})\nReady for terminal operations without SSH.\n`);
-                      }}
-                      className="px-2.5 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-lg text-xs font-medium flex items-center space-x-1.5 transition"
-                      title="Execute bash commands directly on VPS without SSH"
-                    >
-                      <Terminal className="h-3.5 w-3.5" />
-                      <span>💻 Run Command / Web Terminal</span>
-                    </button>
-                  </div>
+                      <button
+                        onClick={() => {
+                          setTerminalServer(server);
+                          setTerminalCmd('free -h');
+                          setTerminalOutput(`Connected to ${server.name} (${server.hostname || 'VPS'})\nReady for terminal operations without SSH.\n`);
+                        }}
+                        className="px-2.5 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-lg text-xs font-medium flex items-center space-x-1.5 transition"
+                        title="Execute bash commands directly on VPS without SSH"
+                      >
+                        <Terminal className="h-3.5 w-3.5" />
+                        <span>💻 Run Command / Web Terminal</span>
+                      </button>
+                    </div>
+                  )
                 )}
 
                 {/* Automated Baseline Stacks & Provisioning Grid */}

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import { 
   Database, CheckCircle2, HardDrive, ShieldCheck, Activity, Clock, 
   RefreshCw, Plus, Play, Square, RotateCcw, Trash2, Copy, Check,
-  Server, Key, Terminal, ExternalLink, AlertCircle
+  Server, Key, Terminal, ExternalLink, AlertCircle, Lock
 } from 'lucide-react';
 import { api } from '../../services/api';
 
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export const DatabasesView: React.FC<Props> = ({ servers }) => {
+  const { isViewer } = useAuth();
   const [selectedServerId, setSelectedServerId] = useState<string>('all');
   const [databases, setDatabases] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -173,13 +175,24 @@ export const DatabasesView: React.FC<Props> = ({ servers }) => {
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin text-blue-400' : ''}`} />
           </button>
 
-          <button
-            onClick={() => setShowDeployModal(true)}
-            className="flex items-center space-x-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-blue-600/25 transition"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Deploy Database</span>
-          </button>
+          {isViewer ? (
+            <button
+              disabled
+              className="flex items-center space-x-2 px-4 py-2.5 bg-slate-800 text-slate-500 rounded-xl text-xs font-bold border border-slate-700/60 cursor-not-allowed opacity-75"
+              title="Action blocked: Viewers have read-only access"
+            >
+              <Lock className="h-4 w-4 text-amber-500" />
+              <span>Deploy DB (Locked)</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => setShowDeployModal(true)}
+              className="flex items-center space-x-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-blue-600/25 transition"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Deploy Database</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -361,56 +374,65 @@ export const DatabasesView: React.FC<Props> = ({ servers }) => {
                   </button>
 
                   <div className="flex items-center space-x-2">
-                    {isRunning ? (
-                      <button
-                        onClick={() => handleAction(db.id, 'stop')}
-                        disabled={actionLoading === db.id + '-stop'}
-                        className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-rose-300 hover:text-rose-200 border border-slate-700/60 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition"
-                        title="Stop Container"
-                      >
-                        <Square className="h-3 w-3" />
-                        <span>Stop</span>
-                      </button>
+                    {isViewer ? (
+                      <span className="px-2.5 py-1 text-[11px] bg-slate-800 text-slate-500 rounded-lg border border-slate-700/60 font-mono flex items-center space-x-1 cursor-not-allowed opacity-75">
+                        <Lock className="h-3 w-3 text-amber-500" />
+                        <span>Actions Locked</span>
+                      </span>
                     ) : (
-                      <button
-                        onClick={() => handleAction(db.id, 'start')}
-                        disabled={actionLoading === db.id + '-start'}
-                        className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-emerald-300 hover:text-emerald-200 border border-slate-700/60 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition"
-                        title="Start Container"
-                      >
-                        <Play className="h-3 w-3" />
-                        <span>Start</span>
-                      </button>
+                      <>
+                        {isRunning ? (
+                          <button
+                            onClick={() => handleAction(db.id, 'stop')}
+                            disabled={actionLoading === db.id + '-stop'}
+                            className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-rose-300 hover:text-rose-200 border border-slate-700/60 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition"
+                            title="Stop Container"
+                          >
+                            <Square className="h-3 w-3" />
+                            <span>Stop</span>
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleAction(db.id, 'start')}
+                            disabled={actionLoading === db.id + '-start'}
+                            className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-emerald-300 hover:text-emerald-200 border border-slate-700/60 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition"
+                            title="Start Container"
+                          >
+                            <Play className="h-3 w-3" />
+                            <span>Start</span>
+                          </button>
+                        )}
+
+                        <button
+                          onClick={() => handleAction(db.id, 'restart')}
+                          disabled={actionLoading === db.id + '-restart'}
+                          className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/60 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition"
+                          title="Restart Container"
+                        >
+                          <RotateCcw className="h-3 w-3" />
+                          <span>Restart</span>
+                        </button>
+
+                        <button
+                          onClick={() => handleAction(db.id, 'backup')}
+                          disabled={actionLoading === db.id + '-backup'}
+                          className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/60 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition"
+                          title="Backup Database Snapshot"
+                        >
+                          <Clock className="h-3 w-3" />
+                          <span>Backup</span>
+                        </button>
+
+                        <button
+                          onClick={() => handleDelete(db.id, db.name)}
+                          disabled={actionLoading === db.id + '-delete'}
+                          className="p-1.5 hover:bg-rose-500/20 text-slate-500 hover:text-rose-400 rounded-lg transition"
+                          title="Delete Database"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </>
                     )}
-
-                    <button
-                      onClick={() => handleAction(db.id, 'restart')}
-                      disabled={actionLoading === db.id + '-restart'}
-                      className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/60 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition"
-                      title="Restart Container"
-                    >
-                      <RotateCcw className="h-3 w-3" />
-                      <span>Restart</span>
-                    </button>
-
-                    <button
-                      onClick={() => handleAction(db.id, 'backup')}
-                      disabled={actionLoading === db.id + '-backup'}
-                      className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/60 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition"
-                      title="Backup Database Snapshot"
-                    >
-                      <Clock className="h-3 w-3" />
-                      <span>Backup</span>
-                    </button>
-
-                    <button
-                      onClick={() => handleDelete(db.id, db.name)}
-                      disabled={actionLoading === db.id + '-delete'}
-                      className="p-1.5 hover:bg-rose-500/20 text-slate-500 hover:text-rose-400 rounded-lg transition"
-                      title="Delete Database"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
                   </div>
                 </div>
               </div>

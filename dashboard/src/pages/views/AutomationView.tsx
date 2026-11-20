@@ -10,7 +10,9 @@ import {
   ToggleLeft,
   ToggleRight,
   GitBranch,
+  Lock,
 } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 interface Workflow {
   id: string;
@@ -23,6 +25,7 @@ interface Workflow {
 }
 
 export const AutomationView: React.FC = () => {
+  const { isViewer } = useAuth();
   const [workflows, setWorkflows] = useState<Workflow[]>([
     {
       id: 'wf-1',
@@ -105,9 +108,14 @@ export const AutomationView: React.FC = () => {
                 </div>
 
                 <button
-                  onClick={() => toggleWorkflow(wf.id)}
-                  className="flex items-center space-x-1.5 text-xs font-semibold text-slate-300"
+                  onClick={() => !isViewer && toggleWorkflow(wf.id)}
+                  disabled={isViewer}
+                  className={`flex items-center space-x-1.5 text-xs font-semibold ${
+                    isViewer ? 'opacity-50 cursor-not-allowed' : 'text-slate-300'
+                  }`}
+                  title={isViewer ? 'Automations modification is locked in Viewer Mode' : undefined}
                 >
+                  {isViewer && <Lock className="h-3.5 w-3.5 text-amber-500" />}
                   {wf.status === 'active' ? (
                     <span className="text-emerald-400 flex items-center space-x-1">
                       <ToggleRight className="h-5 w-5" />

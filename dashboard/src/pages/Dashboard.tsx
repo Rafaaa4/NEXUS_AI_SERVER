@@ -27,7 +27,7 @@ import { BackupsView } from './views/BackupsView';
 import { ReportsView } from './views/ReportsView';
 import { SettingsView } from './views/SettingsView';
 
-import { Terminal, Copy, Check, FileText } from 'lucide-react';
+import { Terminal, Copy, Check, FileText, Lock, ShieldAlert } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 
 const VALID_TABS: Record<string, NavSection> = {
@@ -57,7 +57,7 @@ const VALID_TABS: Record<string, NavSection> = {
 };
 
 export const Dashboard: React.FC = () => {
-  const { currentOrg, refreshUserOrgs } = useAuth();
+  const { currentOrg, refreshUserOrgs, isViewer } = useAuth();
   const { isBusiness } = useMode();
 
   // Navigation State with URL synchronization
@@ -315,6 +315,22 @@ export const Dashboard: React.FC = () => {
           onNavigate={(section) => handleSelectTab(section)}
           notificationsCount={unreadNotificationsCount}
         />
+
+        {/* Viewer Read-Only Persistent Header Bar */}
+        {isViewer && (
+          <div className="bg-amber-500/10 border-b border-amber-500/20 px-6 py-2.5 flex items-center justify-between text-xs text-amber-300">
+            <div className="flex items-center space-x-2">
+              <Lock className="h-4 w-4 text-amber-400 shrink-0" />
+              <span className="font-bold">READ-ONLY MODE (VIEWER):</span>
+              <span className="text-slate-300">
+                You are inspecting <strong className="text-white">{currentOrg?.name}</strong>. Infrastructure modifications, deployments, and mutating actions are blocked.
+              </span>
+            </div>
+            <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2.5 py-0.5 rounded-full font-mono font-bold uppercase tracking-wider">
+              VIEW-ONLY ACCESS
+            </span>
+          </div>
+        )}
 
         {/* Action Success Toast Feedback */}
         {actionSuccess && (

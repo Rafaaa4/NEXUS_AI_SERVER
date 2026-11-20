@@ -14,8 +14,10 @@ import {
   Terminal,
   Activity,
   Layers,
+  Lock,
 } from 'lucide-react';
 import { api, ActionProposal } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 
 interface Props {
   servers: any[];
@@ -44,6 +46,7 @@ export const AiCommandCenter: React.FC<Props> = ({
   onRejectProposal,
   onRefreshData,
 }) => {
+  const { isViewer } = useAuth();
   const [inputQuery, setInputQuery] = useState('');
   const [selectedServerId, setSelectedServerId] = useState<string>(servers[0]?.id || '');
   const [loading, setLoading] = useState(false);
@@ -318,21 +321,30 @@ export const AiCommandCenter: React.FC<Props> = ({
                     </div>
 
                     {prop.status === 'pending' && (
-                      <div className="flex items-center space-x-2 pt-1">
-                        <button
-                          onClick={() => onRejectProposal(prop.id)}
-                          className="flex-1 py-1.5 bg-slate-800 hover:bg-rose-900/30 text-slate-300 hover:text-rose-300 rounded-lg text-xs font-semibold transition"
-                        >
-                          Reject
-                        </button>
-                        <button
-                          onClick={() => onApproveProposal(prop)}
-                          className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold shadow-md shadow-emerald-600/20 flex items-center justify-center space-x-1 transition"
-                        >
-                          <Check className="h-3.5 w-3.5" />
-                          <span>Approve & Run</span>
-                        </button>
-                      </div>
+                      isViewer ? (
+                        <div className="pt-1">
+                          <div className="w-full py-1.5 bg-slate-800 text-slate-400 rounded-lg text-xs font-medium border border-slate-700/60 flex items-center justify-center space-x-1.5 cursor-not-allowed">
+                            <Lock className="h-3.5 w-3.5 text-amber-400" />
+                            <span>Execution Locked (Viewer Mode)</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center space-x-2 pt-1">
+                          <button
+                            onClick={() => onRejectProposal(prop.id)}
+                            className="flex-1 py-1.5 bg-slate-800 hover:bg-rose-900/30 text-slate-300 hover:text-rose-300 rounded-lg text-xs font-semibold transition"
+                          >
+                            Reject
+                          </button>
+                          <button
+                            onClick={() => onApproveProposal(prop)}
+                            className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold shadow-md shadow-emerald-600/20 flex items-center justify-center space-x-1 transition"
+                          >
+                            <Check className="h-3.5 w-3.5" />
+                            <span>Approve & Run</span>
+                          </button>
+                        </div>
+                      )
                     )}
                   </div>
                 ))

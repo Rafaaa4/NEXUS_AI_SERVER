@@ -20,8 +20,10 @@ import {
   AlertCircle,
   ExternalLink,
   Key,
+  Lock,
 } from 'lucide-react';
 import { api } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 
 interface Props {
   applications: any[];
@@ -38,6 +40,7 @@ export const ApplicationsView: React.FC<Props> = ({
   onRedeploy,
   onRefresh,
 }) => {
+  const { isViewer } = useAuth();
   const [activeLogsApp, setActiveLogsApp] = useState<any | null>(null);
 
   // Edit State
@@ -139,13 +142,24 @@ export const ApplicationsView: React.FC<Props> = ({
           </p>
         </div>
 
-        <button
-          onClick={() => onOpenDeployModal(servers[0])}
-          className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-blue-600/25 flex items-center space-x-2 transition shrink-0"
-        >
-          <Plus className="h-4 w-4" />
-          <span>Deploy New Application</span>
-        </button>
+        {isViewer ? (
+          <button
+            disabled
+            className="px-4 py-2.5 bg-slate-800 text-slate-500 rounded-xl text-xs font-semibold border border-slate-700/60 flex items-center space-x-2 cursor-not-allowed shrink-0"
+            title="Read-Only Mode: Viewers cannot deploy new applications"
+          >
+            <Lock className="h-4 w-4 text-amber-500" />
+            <span>Deploy App (Locked)</span>
+          </button>
+        ) : (
+          <button
+            onClick={() => onOpenDeployModal(servers[0])}
+            className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-blue-600/25 flex items-center space-x-2 transition shrink-0"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Deploy New Application</span>
+          </button>
+        )}
       </div>
 
       {applications.length === 0 ? (
@@ -155,12 +169,22 @@ export const ApplicationsView: React.FC<Props> = ({
           <p className="text-xs text-slate-400 max-w-sm mx-auto mt-1 mb-6">
             Deploy your code from GitHub or a Docker configuration straight to your connected servers.
           </p>
-          <button
-            onClick={() => onOpenDeployModal(servers[0])}
-            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold"
-          >
-            Deploy First Application
-          </button>
+          {isViewer ? (
+            <button
+              disabled
+              className="px-5 py-2.5 bg-slate-800 text-slate-500 rounded-xl text-xs font-semibold border border-slate-700/60 flex items-center space-x-2 mx-auto cursor-not-allowed"
+            >
+              <Lock className="h-4 w-4 text-amber-500" />
+              <span>Deployments Locked (Viewer)</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => onOpenDeployModal(servers[0])}
+              className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold"
+            >
+              Deploy First Application
+            </button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -258,41 +282,50 @@ export const ApplicationsView: React.FC<Props> = ({
 
                 {/* Card Actions */}
                 <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between gap-2">
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => setActiveLogsApp(app)}
-                      className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-medium flex items-center space-x-1.5 border border-slate-700/60 transition"
-                      title="View deployment logs"
-                    >
-                      <FileText className="h-3.5 w-3.5 text-slate-400" />
-                      <span>Logs</span>
-                    </button>
-
-                    <button
-                      onClick={() => startEdit(app)}
-                      className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-medium flex items-center space-x-1.5 border border-slate-700/60 transition"
-                      title="Edit repo, branch or name"
-                    >
-                      <Edit3 className="h-3.5 w-3.5 text-blue-400" />
-                      <span>Edit</span>
-                    </button>
-
-                    <button
-                      onClick={() => setDeletingApp(app)}
-                      className="px-2.5 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-xl text-xs font-medium flex items-center space-x-1 border border-rose-500/20 transition"
-                      title="Delete application from server"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-
                   <button
-                    onClick={() => onRedeploy(app)}
-                    className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold shadow-md shadow-blue-600/20 flex items-center space-x-1.5 transition"
+                    onClick={() => setActiveLogsApp(app)}
+                    className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-medium flex items-center space-x-1.5 border border-slate-700/60 transition"
+                    title="View deployment logs"
                   >
-                    <RefreshCw className="h-3.5 w-3.5" />
-                    <span>Redeploy</span>
+                    <FileText className="h-3.5 w-3.5 text-slate-400" />
+                    <span>Logs</span>
                   </button>
+
+                  {isViewer ? (
+                    <span className="px-3 py-1.5 bg-slate-800 text-slate-400 rounded-xl text-xs font-medium border border-slate-700/60 flex items-center space-x-1.5 cursor-not-allowed">
+                      <Lock className="h-3.5 w-3.5 text-amber-400" />
+                      <span>Actions Locked</span>
+                    </span>
+                  ) : (
+                    <>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => startEdit(app)}
+                          className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-medium flex items-center space-x-1.5 border border-slate-700/60 transition"
+                          title="Edit repo, branch or name"
+                        >
+                          <Edit3 className="h-3.5 w-3.5 text-blue-400" />
+                          <span>Edit</span>
+                        </button>
+
+                        <button
+                          onClick={() => setDeletingApp(app)}
+                          className="px-2.5 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-xl text-xs font-medium flex items-center space-x-1 border border-rose-500/20 transition"
+                          title="Delete application from server"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+
+                      <button
+                        onClick={() => onRedeploy(app)}
+                        className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold shadow-md shadow-blue-600/20 flex items-center space-x-1.5 transition"
+                      >
+                        <RefreshCw className="h-3.5 w-3.5" />
+                        <span>Redeploy</span>
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             );

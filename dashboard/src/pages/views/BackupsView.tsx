@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { Archive, CheckCircle2, Clock, HardDrive, RefreshCw, Shield, AlertTriangle } from 'lucide-react';
+import { Archive, CheckCircle2, Clock, HardDrive, RefreshCw, Shield, AlertTriangle, Lock } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 export const BackupsView: React.FC = () => {
+  const { isViewer } = useAuth();
   const [backingUp, setBackingUp] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
@@ -58,14 +60,24 @@ export const BackupsView: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={handleTriggerBackup}
-          disabled={backingUp}
-          className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-blue-600/25 flex items-center space-x-2 transition disabled:opacity-50 shrink-0"
-        >
-          <RefreshCw className={`h-4 w-4 ${backingUp ? 'animate-spin' : ''}`} />
-          <span>{backingUp ? 'Creating Snapshot...' : 'Trigger Backup Now'}</span>
-        </button>
+        {isViewer ? (
+          <button
+            disabled
+            className="px-4 py-2.5 bg-slate-800 text-slate-500 rounded-xl text-xs font-semibold border border-slate-700/60 flex items-center space-x-2 cursor-not-allowed shrink-0"
+          >
+            <Lock className="h-4 w-4 text-amber-500" />
+            <span>Backup Trigger (Locked)</span>
+          </button>
+        ) : (
+          <button
+            onClick={handleTriggerBackup}
+            disabled={backingUp}
+            className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-blue-600/25 flex items-center space-x-2 transition disabled:opacity-50 shrink-0"
+          >
+            <RefreshCw className={`h-4 w-4 ${backingUp ? 'animate-spin' : ''}`} />
+            <span>{backingUp ? 'Creating Snapshot...' : 'Trigger Backup Now'}</span>
+          </button>
+        )}
       </div>
 
       {successMsg && (

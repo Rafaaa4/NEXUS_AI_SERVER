@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import {
   Rocket,
   Globe,
@@ -16,6 +17,7 @@ import {
   X,
   AlertTriangle,
   RotateCcw,
+  Lock,
 } from 'lucide-react';
 import { api } from '../../services/api';
 
@@ -32,6 +34,7 @@ export const DeploymentsView: React.FC<Props> = ({
   onOpenDeployModal,
   onRefresh,
 }) => {
+  const { isViewer } = useAuth();
   const [copiedWebhook, setCopiedWebhook] = useState(false);
   const webhookUrl = `${window.location.origin.replace(':5173', ':4000')}/api/v1/deployments/webhook`;
 
@@ -143,13 +146,24 @@ export const DeploymentsView: React.FC<Props> = ({
           </p>
         </div>
 
-        <button
-          onClick={onOpenDeployModal}
-          className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-blue-600/25 flex items-center space-x-2 transition shrink-0"
-        >
-          <Rocket className="h-4 w-4" />
-          <span>New Deployment</span>
-        </button>
+        {isViewer ? (
+          <button
+            disabled
+            className="px-4 py-2.5 bg-slate-800/80 text-slate-500 border border-slate-700/60 rounded-xl text-xs font-semibold flex items-center space-x-2 cursor-not-allowed opacity-75 shrink-0"
+            title="Action blocked: Viewers have read-only access"
+          >
+            <Lock className="h-4 w-4 text-amber-500" />
+            <span>New Deployment (Locked)</span>
+          </button>
+        ) : (
+          <button
+            onClick={onOpenDeployModal}
+            className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-blue-600/25 flex items-center space-x-2 transition shrink-0"
+          >
+            <Rocket className="h-4 w-4" />
+            <span>New Deployment</span>
+          </button>
+        )}
       </div>
 
       {/* GitHub Auto-Deploy Webhook Card */}
@@ -239,39 +253,51 @@ export const DeploymentsView: React.FC<Props> = ({
                         <span>Open Website</span>
                       </a>
 
-                      <button
-                        onClick={() => handleRollback(dep)}
-                        disabled={rollingBackId === dep.id}
-                        className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-amber-400 rounded-lg text-xs font-medium flex items-center space-x-1 border border-slate-700 transition disabled:opacity-50"
-                        title="Rollback to previous release"
-                      >
-                        <RotateCcw className={`h-3 w-3 ${rollingBackId === dep.id ? 'animate-spin' : ''}`} />
-                        <span>Rollback</span>
-                      </button>
+                      {isViewer ? (
+                        <span
+                          className="px-2.5 py-1.5 bg-slate-800 text-slate-500 rounded-lg text-xs font-medium flex items-center space-x-1 border border-slate-700/60 cursor-not-allowed opacity-75"
+                          title="Actions locked for Viewer"
+                        >
+                          <Lock className="h-3 w-3 text-amber-500" />
+                          <span>Actions Locked</span>
+                        </span>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => handleRollback(dep)}
+                            disabled={rollingBackId === dep.id}
+                            className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-amber-400 rounded-lg text-xs font-medium flex items-center space-x-1 border border-slate-700 transition disabled:opacity-50"
+                            title="Rollback to previous release"
+                          >
+                            <RotateCcw className={`h-3 w-3 ${rollingBackId === dep.id ? 'animate-spin' : ''}`} />
+                            <span>Rollback</span>
+                          </button>
 
-                      <button
-                        onClick={() => startEdit(dep)}
-                        className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium border border-slate-700 transition"
-                        title="Edit repo & branch"
-                      >
-                        <Edit3 className="h-3.5 w-3.5 text-blue-400" />
-                      </button>
+                          <button
+                            onClick={() => startEdit(dep)}
+                            className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium border border-slate-700 transition"
+                            title="Edit repo & branch"
+                          >
+                            <Edit3 className="h-3.5 w-3.5 text-blue-400" />
+                          </button>
 
-                      <button
-                        onClick={() => setDeletingDep(dep)}
-                        className="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-lg text-xs font-medium border border-rose-500/20 transition"
-                        title="Delete deployment & files"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+                          <button
+                            onClick={() => setDeletingDep(dep)}
+                            className="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-lg text-xs font-medium border border-rose-500/20 transition"
+                            title="Delete deployment & files"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
 
-                      <button
-                        onClick={() => onRedeploy(dep)}
-                        className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-medium flex items-center space-x-1.5 shadow-sm transition"
-                      >
-                        <RefreshCw className="h-3 w-3" />
-                        <span>Redeploy</span>
-                      </button>
+                          <button
+                            onClick={() => onRedeploy(dep)}
+                            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-medium flex items-center space-x-1.5 shadow-sm transition"
+                          >
+                            <RefreshCw className="h-3 w-3" />
+                            <span>Redeploy</span>
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
 

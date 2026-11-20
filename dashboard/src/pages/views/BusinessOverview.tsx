@@ -1,5 +1,6 @@
 import React from 'react';
 import { useMode } from '../../context/ModeContext';
+import { useAuth } from '../../context/AuthContext';
 import {
   Server,
   AppWindow,
@@ -17,6 +18,7 @@ import {
   Shield,
   Check,
   Folder,
+  Lock,
 } from 'lucide-react';
 import { NavSection } from '../../components/Sidebar';
 
@@ -42,6 +44,7 @@ export const BusinessOverview: React.FC<Props> = ({
   onApproveProposal,
 }) => {
   const { isBusiness } = useMode();
+  const { isViewer } = useAuth();
 
   const onlineServers = servers.filter((s) => s.status === 'online').length;
   const runningApps = applications.filter((a) => a.status === 'running').length;
@@ -298,20 +301,29 @@ export const BusinessOverview: React.FC<Props> = ({
               <Bot className="h-4 w-4" />
               <span>Ask AI to Investigate</span>
             </button>
-            <button
-              onClick={onOpenAddServer}
-              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold border border-slate-700/60 flex items-center space-x-2 transition"
-            >
-              <Server className="h-4 w-4 text-blue-400" />
-              <span>Connect New VPS</span>
-            </button>
-            <button
-              onClick={() => onNavigate('deployments')}
-              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold border border-slate-700/60 flex items-center space-x-2 transition"
-            >
-              <Rocket className="h-4 w-4 text-emerald-400" />
-              <span>Deploy Application</span>
-            </button>
+            {isViewer ? (
+              <div className="flex items-center space-x-1.5 px-3 py-2 bg-slate-800 text-slate-400 rounded-xl text-xs font-semibold border border-slate-700/60 cursor-not-allowed">
+                <Lock className="h-3.5 w-3.5 text-amber-500" />
+                <span>Actions Locked (Viewer Mode)</span>
+              </div>
+            ) : (
+              <>
+                <button
+                  onClick={onOpenAddServer}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold border border-slate-700/60 flex items-center space-x-2 transition"
+                >
+                  <Server className="h-4 w-4 text-blue-400" />
+                  <span>Connect New VPS</span>
+                </button>
+                <button
+                  onClick={() => onNavigate('deployments')}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold border border-slate-700/60 flex items-center space-x-2 transition"
+                >
+                  <Rocket className="h-4 w-4 text-emerald-400" />
+                  <span>Deploy Application</span>
+                </button>
+              </>
+            )}
           </div>
         </div>
 
