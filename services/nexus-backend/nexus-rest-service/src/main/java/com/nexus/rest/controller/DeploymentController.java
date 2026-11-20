@@ -20,14 +20,17 @@ public class DeploymentController {
     private final DeploymentRepository deploymentRepository;
     private final JobRepository jobRepository;
     private final ServerRepository serverRepository;
+    private final com.nexus.rest.service.NotificationService notificationService;
     private final ObjectMapper objectMapper;
 
     public DeploymentController(DeploymentRepository deploymentRepository,
                                 JobRepository jobRepository,
-                                ServerRepository serverRepository) {
+                                ServerRepository serverRepository,
+                                com.nexus.rest.service.NotificationService notificationService) {
         this.deploymentRepository = deploymentRepository;
         this.jobRepository = jobRepository;
         this.serverRepository = serverRepository;
+        this.notificationService = notificationService;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -153,6 +156,16 @@ public class DeploymentController {
         } catch (Exception ignored) {}
         jobRepository.save(job);
 
+        // Notify
+        notificationService.send(
+            orgId,
+            "Deployment Triggered: " + dep.getAppName(),
+            "Deployment job queued for " + dep.getAppName() + " (" + dep.getBranch() + ")",
+            "deployment",
+            "info",
+            "deployments"
+        );
+
         Map<String, Object> formattedDep = formatDeployment(dep);
         return ResponseEntity.ok(Map.of("success", true, "data", Map.of(
             "deployment", formattedDep,
@@ -206,6 +219,15 @@ public class DeploymentController {
             } catch (Exception ignored) {}
             jobRepository.save(job);
 
+            notificationService.send(
+                dep.getOrganizationId(),
+                "Redeployment Triggered: " + dep.getAppName(),
+                "Redeploying application " + dep.getAppName() + " (" + dep.getBranch() + ")",
+                "deployment",
+                "info",
+                "deployments"
+            );
+
             return ResponseEntity.ok(Map.of("success", true, "data", Map.of(
                 "deployment", formatDeployment(dep),
                 "job", Map.of("id", job.getId().toString(), "status", job.getStatus())
@@ -233,6 +255,15 @@ public class DeploymentController {
                 job.setParameters(objectMapper.writeValueAsString(params));
             } catch (Exception ignored) {}
             jobRepository.save(job);
+
+            notificationService.send(
+                dep.getOrganizationId(),
+                "Redeployment Triggered: " + dep.getAppName(),
+                "Redeploying application " + dep.getAppName() + " (" + dep.getBranch() + ")",
+                "deployment",
+                "info",
+                "deployments"
+            );
 
             return ResponseEntity.ok(Map.of("success", true, "data", Map.of(
                 "success", true,

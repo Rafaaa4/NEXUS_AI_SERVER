@@ -105,12 +105,14 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Notifications Center Bell */}
         <button
           onClick={onOpenNotifications}
-          className="relative p-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 rounded-xl transition"
-          title="Notifications Center"
+          className="relative p-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 rounded-xl transition group"
+          title={`Notifications Center (${notificationsCount} unread)`}
         >
-          <Bell className="h-4 w-4" />
+          <Bell className="h-4 w-4 group-hover:text-white transition" />
           {notificationsCount > 0 && (
-            <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-blue-500 animate-pulse"></span>
+            <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-blue-600 border-2 border-[#0d1424] text-white text-[10px] font-bold font-mono rounded-full flex items-center justify-center animate-pulse shadow-lg">
+              {notificationsCount > 99 ? '99+' : notificationsCount}
+            </span>
           )}
         </button>
 

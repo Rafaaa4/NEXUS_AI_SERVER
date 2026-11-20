@@ -26,18 +26,21 @@ public class ServerController {
     private final JobRepository jobRepository;
     private final ManagedDatabaseRepository managedDatabaseRepository;
     private final ServerTelemetryService serverTelemetryService;
+    private final com.nexus.rest.service.NotificationService notificationService;
     private final ObjectMapper objectMapper;
 
     public ServerController(ServerRepository serverRepository,
                             AgentRepository agentRepository,
                             JobRepository jobRepository,
                             ManagedDatabaseRepository managedDatabaseRepository,
-                            ServerTelemetryService serverTelemetryService) {
+                            ServerTelemetryService serverTelemetryService,
+                            com.nexus.rest.service.NotificationService notificationService) {
         this.serverRepository = serverRepository;
         this.agentRepository = agentRepository;
         this.jobRepository = jobRepository;
         this.managedDatabaseRepository = managedDatabaseRepository;
         this.serverTelemetryService = serverTelemetryService;
+        this.notificationService = notificationService;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -219,6 +222,15 @@ public class ServerController {
         // Optimistically update cached firewall in telemetry service
         serverTelemetryService.updateFirewallRule(id, port, proto, "ALLOW", "OPEN");
 
+        notificationService.send(
+            orgId,
+            "Security: Port " + port + "/" + proto + " Allowed",
+            "Firewall rule opened port " + port + " on host server.",
+            "security",
+            "warning",
+            "security"
+        );
+
         return ResponseEntity.ok(Map.of(
             "success", true,
             "data", Map.of(
@@ -249,6 +261,15 @@ public class ServerController {
 
         // Optimistically update cached firewall in telemetry service
         serverTelemetryService.updateFirewallRule(id, port, proto, "DENY", "CLOSED");
+
+        notificationService.send(
+            orgId,
+            "Security: Port " + port + "/" + proto + " Blocked",
+            "Firewall rule closed port " + port + " on host server.",
+            "security",
+            "info",
+            "security"
+        );
 
         return ResponseEntity.ok(Map.of(
             "success", true,

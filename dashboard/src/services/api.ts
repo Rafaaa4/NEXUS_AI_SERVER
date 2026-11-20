@@ -70,6 +70,20 @@ export interface ActionProposal {
   };
 }
 
+export interface AppNotification {
+  id: string;
+  organizationId: string;
+  userId?: string | null;
+  title: string;
+  message: string;
+  type: 'incident' | 'deployment' | 'security' | 'ai' | 'member' | 'server' | 'system';
+  severity: 'info' | 'success' | 'warning' | 'error';
+  link?: string;
+  read: boolean;
+  createdAt: string;
+  readAt?: string | null;
+}
+
 class ApiService {
   private baseUrl = '/api/v1';
 
@@ -508,6 +522,54 @@ class ApiService {
   async deleteDatabase(id: string) {
     return this.request<any>(`/databases/${id}`, {
       method: 'DELETE',
+    });
+  }
+
+  // Platform Notifications
+  async listNotifications(unreadOnly: boolean = false, limit: number = 50) {
+    return this.request<{ success: boolean; count: number; unreadCount: number; data: AppNotification[] }>(
+      `/notifications?unreadOnly=${unreadOnly}&limit=${limit}`
+    );
+  }
+
+  async getUnreadNotificationsCount() {
+    return this.request<{ success: boolean; unreadCount: number }>('/notifications/unread-count');
+  }
+
+  async markNotificationRead(id: string) {
+    return this.request<{ success: boolean; data: AppNotification }>(`/notifications/${id}/read`, {
+      method: 'PATCH',
+    });
+  }
+
+  async markAllNotificationsRead() {
+    return this.request<{ success: boolean; updated: number }>('/notifications/read-all', {
+      method: 'POST',
+    });
+  }
+
+  async deleteNotification(id: string) {
+    return this.request<{ success: boolean; deleted: boolean; id: string }>(`/notifications/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async clearReadNotifications() {
+    return this.request<{ success: boolean; clearedCount: number }>('/notifications/clear', {
+      method: 'DELETE',
+    });
+  }
+
+  async createNotification(payload: {
+    title: string;
+    message?: string;
+    type?: string;
+    severity?: string;
+    link?: string;
+  }) {
+    return this.request<{ success: boolean; data: AppNotification }>('/notifications', {
+      method: 'POST',
+      body: JSON.stringify(payload),
     });
   }
 }

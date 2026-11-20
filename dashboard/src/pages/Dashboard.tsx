@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { api, Server, Incident, ActionProposal } from '../services/api';
+import { api, Server, Incident, ActionProposal, AppNotification } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useMode } from '../context/ModeContext';
 import { Navbar } from '../components/Navbar';
@@ -80,6 +80,8 @@ export const Dashboard: React.FC = () => {
   // Modals State
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState<number>(0);
   const [isAddServerOpen, setIsAddServerOpen] = useState(false);
   const [deployModalServer, setDeployModalServer] = useState<{ id: string; name: string; hostname?: string | null } | null>(null);
   const [selectedServerToken, setSelectedServerToken] = useState<{
@@ -97,7 +99,7 @@ export const Dashboard: React.FC = () => {
   const fetchData = async () => {
     if (!currentOrg) return;
     try {
-      const [serversData, incidentsData, proposalsData, subData, deploysData, auditData, plansData] =
+      const [serversData, incidentsData, proposalsData, subData, deploysData, auditData, plansData, notifsRes] =
         await Promise.all([
           api.listServers().catch(() => []),
           api.listIncidents().catch(() => []),
@@ -106,6 +108,7 @@ export const Dashboard: React.FC = () => {
           api.listDeployments().catch(() => []),
           api.listAuditLogs(50).catch(() => []),
           api.getPlans().catch(() => []),
+          api.listNotifications(false, 50).catch(() => ({ success: true, count: 0, unreadCount: 0, data: [] })),
         ]);
       setServers(serversData);
       setIncidents(incidentsData);
@@ -114,10 +117,65 @@ export const Dashboard: React.FC = () => {
       setDeployments(deploysData);
       setAuditLogs(auditData);
       setPlans(plansData);
+
+      if (notifsRes?.data) {
+        setNotifications(notifsRes.data);
+        setUnreadNotificationsCount(
+          typeof notifsRes.unreadCount === 'number'
+            ? notifsRes.unreadCount
+            : notifsRes.data.filter((n: AppNotification) => !n.read).length
+        );
+      }
     } catch (err) {
       console.error('Failed to load dashboard data:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleMarkNotificationRead = async (id: string) => {
+    try {
+      await api.markNotificationRead(id);
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, read: true, readAt: new Date().toISOString() } : n))
+      );
+      setUnreadNotificationsCount((c) => Math.max(0, c - 1));
+    } catch (err) {
+      console.error('Failed to mark notification read:', err);
+    }
+  };
+
+  const handleMarkAllNotificationsRead = async () => {
+    try {
+      await api.markAllNotificationsRead();
+      setNotifications((prev) =>
+        prev.map((n) => ({ ...n, read: true, readAt: new Date().toISOString() }))
+      );
+      setUnreadNotificationsCount(0);
+    } catch (err) {
+      console.error('Failed to mark all read:', err);
+    }
+  };
+
+  const handleDeleteNotification = async (id: string) => {
+    try {
+      await api.deleteNotification(id);
+      const target = notifications.find((n) => n.id === id);
+      if (target && !target.read) {
+        setUnreadNotificationsCount((c) => Math.max(0, c - 1));
+      }
+      setNotifications((prev) => prev.filter((n) => n.id !== id));
+    } catch (err) {
+      console.error('Failed to delete notification:', err);
+    }
+  };
+
+  const handleClearReadNotifications = async () => {
+    try {
+      await api.clearReadNotifications();
+      setNotifications((prev) => prev.filter((n) => !n.read));
+    } catch (err) {
+      console.error('Failed to clear read notifications:', err);
     }
   };
 
@@ -252,7 +310,7 @@ export const Dashboard: React.FC = () => {
           onOpenSearch={() => setIsSearchOpen(true)}
           onOpenNotifications={() => setIsNotificationsOpen(true)}
           onNavigate={(section) => handleSelectTab(section)}
-          notificationsCount={incidents.filter((i) => i.status !== 'resolved').length}
+          notificationsCount={unreadNotificationsCount}
         />
 
         {/* Action Success Toast Feedback */}
@@ -392,9 +450,13 @@ export const Dashboard: React.FC = () => {
       <NotificationsModal
         isOpen={isNotificationsOpen}
         onClose={() => setIsNotificationsOpen(false)}
-        incidents={incidents}
-        deployments={deployments}
-        proposals={proposals}
+        notifications={notifications}
+        unreadCount={unreadNotificationsCount}
+        onMarkRead={handleMarkNotificationRead}
+        onMarkAllRead={handleMarkAllNotificationsRead}
+        onDelete={handleDeleteNotification}
+        onClearRead={handleClearReadNotifications}
+        onNavigate={(s) => handleSelectTab(s)}
       />
 
       <AddServerModal

@@ -21,15 +21,18 @@ public class OrganizationController {
     private final MembershipRepository membershipRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final com.nexus.rest.service.NotificationService notificationService;
 
     public OrganizationController(OrganizationRepository organizationRepository,
                                   MembershipRepository membershipRepository,
                                   UserRepository userRepository,
-                                  PasswordEncoder passwordEncoder) {
+                                  PasswordEncoder passwordEncoder,
+                                  com.nexus.rest.service.NotificationService notificationService) {
         this.organizationRepository = organizationRepository;
         this.membershipRepository = membershipRepository;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.notificationService = notificationService;
     }
 
     public record AddMemberRequest(String email, String role) {}
@@ -88,6 +91,15 @@ public class OrganizationController {
                 .orElse(new MembershipEntity(id, user.getId(), role));
         membership.setRole(role);
         membershipRepository.save(membership);
+
+        notificationService.send(
+            id,
+            "Team Member Added: " + email,
+            "User " + email + " assigned role '" + role + "' in organization.",
+            "member",
+            "info",
+            "team"
+        );
 
         Map<String, Object> data = Map.of(
             "userId", user.getId().toString(),

@@ -16,10 +16,14 @@ public class IncidentController {
 
     private final IncidentRepository incidentRepository;
     private final ServerRepository serverRepository;
+    private final com.nexus.rest.service.NotificationService notificationService;
 
-    public IncidentController(IncidentRepository incidentRepository, ServerRepository serverRepository) {
+    public IncidentController(IncidentRepository incidentRepository,
+                              ServerRepository serverRepository,
+                              com.nexus.rest.service.NotificationService notificationService) {
         this.incidentRepository = incidentRepository;
         this.serverRepository = serverRepository;
+        this.notificationService = notificationService;
     }
 
     @GetMapping
@@ -98,6 +102,16 @@ public class IncidentController {
                     inc.setStatus("resolved");
                     inc.setResolvedAt(OffsetDateTime.now());
                     incidentRepository.save(inc);
+
+                    notificationService.send(
+                        inc.getOrganizationId(),
+                        "System Incident Resolved",
+                        "Incident '" + inc.getTitle() + "' was marked resolved.",
+                        "incident",
+                        "success",
+                        "monitoring"
+                    );
+
                     return ResponseEntity.ok(Map.of("success", true, "data", inc));
                 })
                 .orElse(ResponseEntity.notFound().build());
