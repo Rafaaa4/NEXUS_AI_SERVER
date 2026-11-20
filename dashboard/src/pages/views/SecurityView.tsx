@@ -68,9 +68,10 @@ export const SecurityView: React.FC<Props> = ({ auditLogs, servers }) => {
   const fetchFirewall = async () => {
     if (!selectedServerId) return;
     try {
-      const res = await api.getServerFirewall(selectedServerId);
-      if (res && (res as any).data) {
-        setFirewall((res as any).data);
+      const res: any = await api.getServerFirewall(selectedServerId);
+      const fwData = res?.rules ? res : (res?.data || null);
+      if (fwData) {
+        setFirewall(fwData);
       }
     } catch (err) {
       // Keep existing rules

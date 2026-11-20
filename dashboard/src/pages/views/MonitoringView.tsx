@@ -41,7 +41,10 @@ export const MonitoringView: React.FC<Props> = ({
     const fetchMetrics = () => {
       api
         .getServerMetrics(selectedServerId)
-        .then((data) => setLiveMetrics(data?.data || null))
+        .then((res: any) => {
+          const metrics = (res?.cpuUsagePercent !== undefined || res?.cpuUsage !== undefined) ? res : (res?.data || null);
+          setLiveMetrics(metrics);
+        })
         .catch(() => {});
     };
 
@@ -51,7 +54,7 @@ export const MonitoringView: React.FC<Props> = ({
     const interval = setInterval(() => {
       fetchMetrics();
       fetchLogs();
-    }, 4000);
+    }, 3000);
 
     return () => clearInterval(interval);
   }, [selectedServerId]);
@@ -60,8 +63,9 @@ export const MonitoringView: React.FC<Props> = ({
     if (!selectedServerId) return;
     setLoadingLogs(true);
     try {
-      const data = await api.getServerLogs(selectedServerId, 100);
-      setLogs((data as any)?.data || []);
+      const res: any = await api.getServerLogs(selectedServerId, 100);
+      const logList = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
+      setLogs(logList);
     } catch (err) {
       setLogs([]);
     } finally {
