@@ -189,6 +189,76 @@ public class ServerController {
         ));
     }
 
+    @GetMapping("/{id}/firewall")
+    public ResponseEntity<?> getServerFirewall(@PathVariable UUID id) {
+        return ResponseEntity.ok(Map.of(
+            "success", true,
+            "data", serverTelemetryService.getFirewall(id)
+        ));
+    }
+
+    @PostMapping("/{id}/firewall/allow")
+    public ResponseEntity<?> allowFirewallPort(@PathVariable UUID id,
+                                               @RequestHeader(value = "x-organization-id", required = false) String orgHeader,
+                                               @RequestBody Map<String, Object> body) {
+        UUID orgId = orgHeader != null && !orgHeader.isEmpty() ? UUID.fromString(orgHeader) : UUID.fromString("1ab47797-365b-45a8-80aa-4692d020134f");
+        String port = body.getOrDefault("port", "8080").toString();
+        String proto = body.getOrDefault("protocol", "tcp").toString();
+
+        JobEntity job = new JobEntity();
+        job.setOrganizationId(orgId);
+        job.setServerId(id);
+        job.setJobType("security.firewall_allow");
+        job.setStatus("queued");
+        job.setCreatedAt(OffsetDateTime.now());
+        try {
+            job.setParameters(objectMapper.writeValueAsString(Map.of("port", port, "protocol", proto)));
+        } catch (Exception ignored) {}
+        jobRepository.save(job);
+
+        // Optimistically update cached firewall in telemetry service
+        serverTelemetryService.updateFirewallRule(id, port, proto, "ALLOW", "OPEN");
+
+        return ResponseEntity.ok(Map.of(
+            "success", true,
+            "data", Map.of(
+                "message", "Port " + port + "/" + proto + " allow job queued.",
+                "jobId", job.getId().toString()
+            )
+        ));
+    }
+
+    @PostMapping("/{id}/firewall/deny")
+    public ResponseEntity<?> denyFirewallPort(@PathVariable UUID id,
+                                              @RequestHeader(value = "x-organization-id", required = false) String orgHeader,
+                                              @RequestBody Map<String, Object> body) {
+        UUID orgId = orgHeader != null && !orgHeader.isEmpty() ? UUID.fromString(orgHeader) : UUID.fromString("1ab47797-365b-45a8-80aa-4692d020134f");
+        String port = body.getOrDefault("port", "8080").toString();
+        String proto = body.getOrDefault("protocol", "tcp").toString();
+
+        JobEntity job = new JobEntity();
+        job.setOrganizationId(orgId);
+        job.setServerId(id);
+        job.setJobType("security.firewall_deny");
+        job.setStatus("queued");
+        job.setCreatedAt(OffsetDateTime.now());
+        try {
+            job.setParameters(objectMapper.writeValueAsString(Map.of("port", port, "protocol", proto)));
+        } catch (Exception ignored) {}
+        jobRepository.save(job);
+
+        // Optimistically update cached firewall in telemetry service
+        serverTelemetryService.updateFirewallRule(id, port, proto, "DENY", "CLOSED");
+
+        return ResponseEntity.ok(Map.of(
+            "success", true,
+            "data", Map.of(
+                "message", "Port " + port + "/" + proto + " deny job queued.",
+                "jobId", job.getId().toString()
+            )
+        ));
+    }
+
     @PostMapping("/{id}/run-command")
     public ResponseEntity<?> runServerCommand(@PathVariable UUID id,
                                               @RequestHeader(value = "x-organization-id", required = false) String orgHeader,

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 	"syscall"
@@ -24,6 +25,20 @@ type MetricsSnapshot struct {
 	UptimeSeconds        uint64            `json:"uptimeSeconds"`
 	LoadAverage          [3]float64        `json:"loadAverage"`
 	Services             []ServiceStatus   `json:"services"`
+	Firewall             FirewallInfo      `json:"firewall"`
+}
+
+type FirewallRule struct {
+	Port     string `json:"port"`
+	Protocol string `json:"protocol"`
+	Action   string `json:"action"` // ALLOW, DENY
+	Status   string `json:"status"` // OPEN, CLOSED
+	Comment  string `json:"comment"`
+}
+
+type FirewallInfo struct {
+	Status string         `json:"status"` // active, inactive
+	Rules  []FirewallRule `json:"rules"`
 }
 
 type ServiceStatus struct {
@@ -78,6 +93,7 @@ func (c *SystemCollector) Collect(monitoredServices []string) (*MetricsSnapshot,
 	snap.LoadAverage = loadAvg
 
 	snap.Services = checkServices(monitoredServices)
+	snap.Firewall = readFirewall()
 
 	return snap, nil
 }
@@ -279,4 +295,121 @@ func round(val float64, precision int) float64 {
 		p *= 10.0
 	}
 	return float64(int(val*p+0.5)) / p
+}
+
+func readFirewall() FirewallInfo {
+	info := FirewallInfo{
+		Status: "active",
+		Rules:  []FirewallRule{},
+	}
+
+	seenPorts := make(map[string]bool)
+
+	out, err := exec.Command("ufw", "status", "numbered").Output()
+	if err == nil && len(out) > 0 {
+		outStr := string(out)
+		if strings.Contains(strings.ToLower(outStr), "inactive") {
+			info.Status = "inactive"
+		}
+
+		lines := strings.Split(outStr, "\n")
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			if !strings.HasPrefix(line, "[") {
+				continue
+			}
+			closeIdx := strings.Index(line, "]")
+			if closeIdx == -1 {
+				continue
+			}
+			content := strings.TrimSpace(line[closeIdx+1:])
+			fields := strings.Fields(content)
+			if len(fields) >= 2 {
+				portProto := fields[0]
+				action := fields[1]
+
+				cleanPortProto := strings.ReplaceAll(portProto, " (v6)", "")
+				if seenPorts[cleanPortProto] {
+					continue
+				}
+				seenPorts[cleanPortProto] = true
+
+				port := cleanPortProto
+				proto := "tcp"
+				if strings.Contains(cleanPortProto, "/") {
+					parts := strings.Split(cleanPortProto, "/")
+					port = parts[0]
+					proto = parts[1]
+				}
+
+				status := "CLOSED"
+				if strings.ToUpper(action) == "ALLOW" {
+					status = "OPEN"
+				}
+
+				comment := getPortComment(port)
+
+				info.Rules = append(info.Rules, FirewallRule{
+					Port:     port,
+					Protocol: proto,
+					Action:   strings.ToUpper(action),
+					Status:   status,
+					Comment:  comment,
+				})
+			}
+		}
+	}
+
+	// Always ensure standard baseline ports are represented
+	standards := []struct {
+		port    string
+		proto   string
+		action  string
+		status  string
+		comment string
+	}{
+		{"22", "tcp", "ALLOW", "OPEN", "OpenSSH"},
+		{"80", "tcp", "ALLOW", "OPEN", "HTTP (Web)"},
+		{"443", "tcp", "ALLOW", "OPEN", "HTTPS (SSL)"},
+	}
+	for _, std := range standards {
+		key := std.port + "/" + std.proto
+		if !seenPorts[std.port] && !seenPorts[key] {
+			info.Rules = append([]FirewallRule{{
+				Port:     std.port,
+				Protocol: std.proto,
+				Action:   std.action,
+				Status:   std.status,
+				Comment:  std.comment,
+			}}, info.Rules...)
+			seenPorts[std.port] = true
+		}
+	}
+
+	return info
+}
+
+func getPortComment(port string) string {
+	switch port {
+	case "22":
+		return "OpenSSH"
+	case "80":
+		return "HTTP (Web)"
+	case "443":
+		return "HTTPS (SSL)"
+	case "3000":
+		return "NEXUS Dashboard"
+	case "4000":
+		return "NEXUS API"
+	case "5432":
+		return "PostgreSQL"
+	case "3306":
+		return "MySQL"
+	case "6379":
+		return "Redis"
+	case "8080":
+		return "Alternate Web / App"
+	default:
+		return "Custom Service"
+	}
 }

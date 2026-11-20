@@ -110,4 +110,69 @@ public class ServerTelemetryService {
             Map.of("id", UUID.randomUUID().toString(), "timestamp", OffsetDateTime.now().toString(), "level", "info", "source", "agent", "message", "Awaiting live log pipeline synchronization from host")
         );
     }
+
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> getFirewall(UUID serverId) {
+        if (serverId != null && latestMetrics.containsKey(serverId)) {
+            Object fw = latestMetrics.get(serverId).get("firewall");
+            if (fw instanceof Map) {
+                return (Map<String, Object>) fw;
+            }
+        }
+
+        // Standard baseline
+        Map<String, Object> baseline = new HashMap<>();
+        baseline.put("status", "active");
+        List<Map<String, Object>> rules = new ArrayList<>();
+        rules.add(new HashMap<>(Map.of("port", "22", "protocol", "tcp", "action", "ALLOW", "status", "OPEN", "comment", "OpenSSH")));
+        rules.add(new HashMap<>(Map.of("port", "80", "protocol", "tcp", "action", "ALLOW", "status", "OPEN", "comment", "HTTP (Web)")));
+        rules.add(new HashMap<>(Map.of("port", "443", "protocol", "tcp", "action", "ALLOW", "status", "OPEN", "comment", "HTTPS (SSL)")));
+        baseline.put("rules", rules);
+        return baseline;
+    }
+
+    @SuppressWarnings("unchecked")
+    public void updateFirewallRule(UUID serverId, String port, String proto, String action, String status) {
+        if (serverId == null) return;
+        Map<String, Object> currentFw = new HashMap<>(getFirewall(serverId));
+        List<Map<String, Object>> rules = new ArrayList<>();
+        Object existingRules = currentFw.get("rules");
+        if (existingRules instanceof List) {
+            for (Object r : (List<?>) existingRules) {
+                if (r instanceof Map) {
+                    rules.add(new HashMap<>((Map<String, Object>) r));
+                }
+            }
+        }
+
+        boolean found = false;
+        for (Map<String, Object> rule : rules) {
+            String p = String.valueOf(rule.get("port"));
+            String pr = String.valueOf(rule.getOrDefault("protocol", "tcp"));
+            if (p.equalsIgnoreCase(port) && (proto == null || pr.equalsIgnoreCase(proto))) {
+                rule.put("action", action);
+                rule.put("status", status);
+                found = true;
+                break;
+            }
+        }
+
+        if (!found) {
+            Map<String, Object> newRule = new HashMap<>();
+            newRule.put("port", port);
+            newRule.put("protocol", proto != null ? proto : "tcp");
+            newRule.put("action", action);
+            newRule.put("status", status);
+            newRule.put("comment", "Custom Port " + port);
+            rules.add(newRule);
+        }
+
+        currentFw.put("rules", rules);
+
+        latestMetrics.compute(serverId, (k, existing) -> {
+            Map<String, Object> map = existing != null ? new HashMap<>(existing) : new HashMap<>();
+            map.put("firewall", currentFw);
+            return map;
+        });
+    }
 }

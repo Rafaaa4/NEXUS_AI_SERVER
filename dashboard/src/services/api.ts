@@ -325,6 +325,24 @@ class ApiService {
     return this.request<any>(`/servers/${serverId}/metrics`);
   }
 
+  async getServerFirewall(serverId: string) {
+    return this.request<{ status: string; rules: any[] }>(`/servers/${serverId}/firewall`);
+  }
+
+  async allowFirewallPort(serverId: string, port: string | number, protocol: string = 'tcp') {
+    return this.request<any>(`/servers/${serverId}/firewall/allow`, {
+      method: 'POST',
+      body: JSON.stringify({ port, protocol }),
+    });
+  }
+
+  async denyFirewallPort(serverId: string, port: string | number, protocol: string = 'tcp') {
+    return this.request<any>(`/servers/${serverId}/firewall/deny`, {
+      method: 'POST',
+      body: JSON.stringify({ port, protocol }),
+    });
+  }
+
   // AI & Proposals
   async triggerAiAnalysis(incidentId: string) {
     return this.request<{ analysis: any; proposal: ActionProposal }>(`/ai/analyze/${incidentId}`, {

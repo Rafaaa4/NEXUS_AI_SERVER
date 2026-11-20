@@ -49,6 +49,9 @@ var allowedOperations = map[string]bool{
 	"provision.nginx":          true,
 	"provision.python":         true,
 	"provision.nodejs":         true,
+	"security.firewall_allow":   true,
+	"security.firewall_deny":    true,
+	"security.firewall_enable":  true,
 }
 
 // Allowed services for service.restart/reload
@@ -342,6 +345,72 @@ WantedBy=multi-user.target
 		logs.WriteString(fmt.Sprintf("[%s] ✅ Firewall hardening applied successfully.\n", time.Now().Format(time.RFC3339)))
 
 		res.Status = "completed"
+		res.Output = logs.String()
+		return res
+
+	case "security.firewall_allow":
+		var logs strings.Builder
+		port := fmt.Sprintf("%v", job.Parameters["port"])
+		proto := fmt.Sprintf("%v", job.Parameters["protocol"])
+		if proto == "" || proto == "<nil>" {
+			proto = "tcp"
+		}
+		target := port
+		if !strings.Contains(port, "/") {
+			target = fmt.Sprintf("%s/%s", port, proto)
+		}
+		logs.WriteString(fmt.Sprintf("[%s] Allowing firewall rule for port %s...\n", time.Now().Format(time.RFC3339), target))
+		out, err := exec.Command("ufw", "allow", target).CombinedOutput()
+		logs.WriteString(string(out))
+		if err != nil {
+			res.Status = "failed"
+			res.Error = fmt.Sprintf("ufw allow error: %v", err)
+		} else {
+			_ = exec.Command("ufw", "reload").Run()
+			logs.WriteString(fmt.Sprintf("[%s] ✅ Port %s is now ALLOWED in firewall.\n", time.Now().Format(time.RFC3339), target))
+			res.Status = "completed"
+		}
+		res.Output = logs.String()
+		return res
+
+	case "security.firewall_deny":
+		var logs strings.Builder
+		port := fmt.Sprintf("%v", job.Parameters["port"])
+		proto := fmt.Sprintf("%v", job.Parameters["protocol"])
+		if proto == "" || proto == "<nil>" {
+			proto = "tcp"
+		}
+		target := port
+		if !strings.Contains(port, "/") {
+			target = fmt.Sprintf("%s/%s", port, proto)
+		}
+		logs.WriteString(fmt.Sprintf("[%s] Denying/Deleting firewall rule for port %s...\n", time.Now().Format(time.RFC3339), target))
+		_ = exec.Command("ufw", "delete", "allow", target).Run()
+		out, err := exec.Command("ufw", "deny", target).CombinedOutput()
+		logs.WriteString(string(out))
+		if err != nil {
+			res.Status = "failed"
+			res.Error = fmt.Sprintf("ufw deny error: %v", err)
+		} else {
+			_ = exec.Command("ufw", "reload").Run()
+			logs.WriteString(fmt.Sprintf("[%s] ✅ Port %s is now BLOCKED in firewall.\n", time.Now().Format(time.RFC3339), target))
+			res.Status = "completed"
+		}
+		res.Output = logs.String()
+		return res
+
+	case "security.firewall_enable":
+		var logs strings.Builder
+		logs.WriteString(fmt.Sprintf("[%s] Enabling UFW firewall...\n", time.Now().Format(time.RFC3339)))
+		out, err := exec.Command("ufw", "--force", "enable").CombinedOutput()
+		logs.WriteString(string(out))
+		if err != nil {
+			res.Status = "failed"
+			res.Error = fmt.Sprintf("Failed to enable ufw: %v", err)
+		} else {
+			logs.WriteString(fmt.Sprintf("[%s] ✅ UFW firewall is now ACTIVE.\n", time.Now().Format(time.RFC3339)))
+			res.Status = "completed"
+		}
 		res.Output = logs.String()
 		return res
 
