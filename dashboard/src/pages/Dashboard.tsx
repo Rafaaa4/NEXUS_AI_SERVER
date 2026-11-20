@@ -28,13 +28,43 @@ import { ReportsView } from './views/ReportsView';
 import { SettingsView } from './views/SettingsView';
 
 import { Terminal, Copy, Check, FileText } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
+
+const VALID_TABS: Record<string, NavSection> = {
+  overview: 'overview',
+  ai: 'ai',
+  infrastructure: 'infrastructure',
+  servers: 'infrastructure',
+  docker: 'docker',
+  containers: 'docker',
+  databases: 'databases',
+  db: 'databases',
+  applications: 'applications',
+  apps: 'applications',
+  deployments: 'deployments',
+  monitoring: 'monitoring',
+  telemetry: 'monitoring',
+  logs: 'monitoring',
+  security: 'security',
+  firewall: 'security',
+  automation: 'automation',
+  team: 'team',
+  cost: 'cost',
+  backups: 'backups',
+  backup: 'backups',
+  reports: 'reports',
+  settings: 'settings',
+};
 
 export const Dashboard: React.FC = () => {
   const { currentOrg } = useAuth();
   const { isBusiness } = useMode();
 
-  // Navigation State
-  const [currentTab, setCurrentTab] = useState<NavSection>('overview');
+  // Navigation State with URL synchronization
+  const { tab } = useParams<{ tab?: string }>();
+  const navigate = useNavigate();
+  const currentTab: NavSection = (tab && VALID_TABS[tab.toLowerCase()]) || 'overview';
+  const handleSelectTab = (section: NavSection) => navigate(`/${section}`);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // Core Data
@@ -103,7 +133,7 @@ export const Dashboard: React.FC = () => {
       await api.triggerAiAnalysis(incidentId);
       setActionSuccess('AI Analysis completed and proposal generated!');
       await fetchData();
-      setCurrentTab('ai');
+      handleSelectTab('ai');
     } catch (err: any) {
       alert(err.message || 'AI Analysis failed');
     } finally {
@@ -208,7 +238,7 @@ export const Dashboard: React.FC = () => {
       {/* Enterprise Categorized Sidebar */}
       <Sidebar
         currentTab={currentTab}
-        onSelectTab={(tab) => setCurrentTab(tab)}
+        onSelectTab={(tab) => handleSelectTab(tab)}
         collapsed={sidebarCollapsed}
         onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
         incidentsCount={incidents.filter((i) => i.status !== 'resolved').length}
@@ -221,7 +251,7 @@ export const Dashboard: React.FC = () => {
         <Navbar
           onOpenSearch={() => setIsSearchOpen(true)}
           onOpenNotifications={() => setIsNotificationsOpen(true)}
-          onNavigate={(section) => setCurrentTab(section)}
+          onNavigate={(section) => handleSelectTab(section)}
           notificationsCount={incidents.filter((i) => i.status !== 'resolved').length}
         />
 
@@ -242,7 +272,7 @@ export const Dashboard: React.FC = () => {
               incidents={incidents}
               proposals={proposals}
               subscription={subscription}
-              onNavigate={(s) => setCurrentTab(s)}
+              onNavigate={(s) => handleSelectTab(s)}
               onOpenAddServer={() => setIsAddServerOpen(true)}
               onApproveProposal={handleApprove}
             />
@@ -353,7 +383,7 @@ export const Dashboard: React.FC = () => {
       <GlobalSearchModal
         isOpen={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
-        onNavigate={(s) => setCurrentTab(s)}
+        onNavigate={(s) => handleSelectTab(s)}
         servers={servers}
         applications={deployments}
         incidents={incidents}
