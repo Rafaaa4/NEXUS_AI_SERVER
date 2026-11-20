@@ -28,7 +28,7 @@
 - [🧠 AI Diagnostic Engine & Human-in-the-Loop Remediation](#-ai-diagnostic-engine--human-in-the-loop-remediation)
 - [⚡ Quick Start with Docker](#-quick-start-with-docker)
 - [🧪 Real-World Testing with VirtualBox or Cloud VPS](#-real-world-testing-with-virtualbox-or-cloud-vps)
-- [📡 API & Multi-Protocol Testing](#-api--multi-protocol-testing)
+- [📡 Complete API & Multi-Protocol Endpoints Catalog](#-complete-api--multi-protocol-endpoints-catalog)
 - [📂 Directory Structure](#-directory-structure)
 
 ---
@@ -381,25 +381,188 @@ You can test the complete platform locally using an **Ubuntu Server** VM in Orac
 
 ---
 
-## 📡 API & Multi-Protocol Testing
+---
+
+## 📡 Complete API & Multi-Protocol Endpoints Catalog
+
+NEXUS AI exposes multi-protocol interfaces spanning **REST (JSON)**, **SOAP (Spring-WS / XML)**, **gRPC (Protobuf / HTTP/2)**, and **FastAPI (Python AI)**. Below is the comprehensive breakdown of all available endpoints grouped by service architecture:
+
+---
+
+### 🟢 1. Spring Boot REST API Service (`nexus-rest-service` — Port `4000`)
+
+All authenticated REST endpoints require the header `Authorization: Bearer <JWT_ACCESS_TOKEN>` and the tenant isolation header `x-organization-id: <ORGANIZATION_UUID>`.
+
+#### 🔐 Authentication & Session Endpoints (`/api/v1/auth`)
+| Method | Endpoint | Description | RBAC Access |
+|---|---|---|---|
+| `POST` | `/api/v1/auth/register` | Register a new user account & create default personal tenant organization | Public |
+| `POST` | `/api/v1/auth/login` | Authenticate with email/password; returns JWT access token & user profile | Public |
+| `GET` | `/api/v1/auth/me` | Fetch active user session, profile, and list of affiliated organizations | Authenticated |
+
+#### 🏢 Organization & Team RBAC Management (`/api/v1/organizations`)
+| Method | Endpoint | Description | RBAC Access |
+|---|---|---|---|
+| `GET` | `/api/v1/organizations/{id}/members` | List all employees & invited users with their assigned roles & permissions | Viewer, Operator, Admin, Owner |
+| `POST` | `/api/v1/organizations/{id}/members` | Invite new employee to the team (assigning role: `admin`, `operator`, `viewer`) | Admin, Owner |
+| `PATCH` | `/api/v1/organizations/{id}/members/{userId}` | Update a member's assigned role (e.g. promote `viewer` to `operator`/`admin`) | Admin, Owner |
+| `DELETE` | `/api/v1/organizations/{id}/members/{userId}` | Revoke member access and purge organization membership | Admin, Owner |
+
+#### 🖥️ Infrastructure & Host Fleet Management (`/api/v1/servers`)
+| Method | Endpoint | Description | RBAC Access |
+|---|---|---|---|
+| `GET` | `/api/v1/servers` | List all enrolled host servers, statuses (`online`/`offline`), IP addresses & OS | Viewer, Operator, Admin, Owner |
+| `POST` | `/api/v1/servers` | Register a new server node in the cluster inventory | Operator, Admin, Owner |
+| `DELETE` | `/api/v1/servers/{id}` | De-enroll and remove server node from management | Admin, Owner |
+| `POST` | `/api/v1/servers/{id}/enrollment-token` | Generate single-use agent enrollment token and 1-click bootstrap command | Operator, Admin, Owner |
+| `GET` | `/api/v1/servers/{id}/metrics` | Fetch real-time CPU, RAM, Disk, Load average, and Network telemetry (cached) | Viewer, Operator, Admin, Owner |
+| `GET` | `/api/v1/servers/{id}/logs` | Stream recent auto-redacted systemd journal logs from the server node | Viewer, Operator, Admin, Owner |
+| `POST` | `/api/v1/servers/{id}/run-command` | Execute interactive shell command via agent and stream back terminal stdout | Operator, Admin, Owner |
+| `POST` | `/api/v1/servers/{id}/install-docker` | Trigger automated 1-click Docker Engine & Docker Compose v2 installation | Operator, Admin, Owner |
+| `POST` | `/api/v1/servers/{id}/update-agent` | Dispatch automated self-update job to the running Go agent daemon | Admin, Owner |
+| `POST` | `/api/v1/servers/{id}/baseline-proposals` | Generate security baseline stack recommendations for the host | Admin, Owner |
+| `GET` | `/api/v1/servers/jobs/{jobId}` | Inspect execution status and output of an asynchronous agent operational job | Viewer, Operator, Admin, Owner |
+
+#### 🛡️ Security Center & Host UFW Firewall (`/api/v1/servers/{id}/firewall`)
+| Method | Endpoint | Description | RBAC Access |
+|---|---|---|---|
+| `GET` | `/api/v1/servers/{id}/firewall` | List active UFW firewall rules on the host node (`OPEN` / `CLOSED` ports) | Viewer, Operator, Admin, Owner |
+| `POST` | `/api/v1/servers/{id}/firewall/allow` | Open / Allow incoming TCP or UDP traffic on a specific port (e.g. 80, 443, 22) | Admin, Owner |
+| `POST` | `/api/v1/servers/{id}/firewall/deny` | Close / Deny incoming traffic on a port (`ufw deny` / `ufw delete allow`) | Admin, Owner |
+
+#### 🚀 Universal Web Deployments & Git CI/CD (`/api/v1/deployments`)
+| Method | Endpoint | Description | RBAC Access |
+|---|---|---|---|
+| `GET` | `/api/v1/deployments` | List all production application deployments, health states, commit SHAs & URLs | Viewer, Operator, Admin, Owner |
+| `GET` | `/api/v1/deployments/{id}` | Get deployment details, build logs, and environment configurations | Viewer, Operator, Admin, Owner |
+| `POST` | `/api/v1/deployments` | Deploy new web application from Git repository (React, Vue, Node, Python, PHP) | Operator, Admin, Owner |
+| `PATCH` | `/api/v1/deployments/{id}` | Update application repository URL, branch, or environment variables | Operator, Admin, Owner |
+| `POST` | `/api/v1/deployments/{id}/redeploy` | Trigger immediate rebuild and atomic release deployment on the server node | Operator, Admin, Owner |
+| `POST` | `/api/v1/deployments/{id}/rollback` | Rollback immediately to the previous atomic release directory | Operator, Admin, Owner |
+| `DELETE` | `/api/v1/deployments/{id}` | Delete application, clean up `/var/www/` release directory and Nginx virtual host | Admin, Owner |
+
+#### 🗄️ Managed Database Provisioning (`/api/v1/databases`)
+| Method | Endpoint | Description | RBAC Access |
+|---|---|---|---|
+| `GET` | `/api/v1/databases` | List all managed databases (PostgreSQL, MySQL, MongoDB, Redis) and ports | Viewer, Operator, Admin, Owner |
+| `POST` | `/api/v1/databases` | Provision containerized database instance on target server with persistent storage | Operator, Admin, Owner |
+| `POST` | `/api/v1/databases/{id}/action` | Execute database lifecycle action (`start`, `stop`, `restart`, `backup`) | Operator, Admin, Owner |
+| `DELETE` | `/api/v1/databases/{id}` | Deprovision database and securely purge storage volumes | Admin, Owner |
+
+#### 🤖 Remote Agent Daemon Distribution & Sync (`/agent`)
+| Method | Endpoint | Description | Auth |
+|---|---|---|---|
+| `GET` | `/agent/nexus-agent` | Download pre-compiled standalone Linux x86_64 Go agent binary | Public |
+| `GET` | `/agent/bootstrap.sh` | Download dynamic bash bootstrap installation script | Public |
+| `POST` | `/agent/v1/enroll` | Enroll host using enrollment token and issue cryptographic agent identity | Token Bound |
+| `GET` | `/agent/v1/jobs/pending` | Agent long-poll endpoint to retrieve queued operational jobs (every 3 seconds) | Agent Token |
+| `POST` | `/agent/v1/jobs/{id}/result` | Deliver job execution stdout, exit code, and error diagnostics | Agent Token |
+| `POST` | `/agent/v1/heartbeat` | Agent liveness heartbeat verifying host reachability | Agent Token |
+| `POST` | `/agent/v1/metrics` | Ingest real-time CPU, RAM, Disk, Load average, and Network bytes from agent | Agent Token |
+| `POST` | `/agent/v1/logs` | Ingest redacted host journal log streams into in-memory telemetry buffer | Agent Token |
+
+#### 🧠 AI Incident Diagnostics & Action Proposals (`/api/v1/ai`)
+| Method | Endpoint | Description | RBAC Access |
+|---|---|---|---|
+| `GET` | `/api/v1/ai/proposals` | List pending AI-generated remediation action proposals awaiting approval | Viewer, Operator, Admin, Owner |
+| `POST` | `/api/v1/ai/proposals/{id}/approve` | Human authorization: approve action proposal and dispatch execution to host | Operator, Admin, Owner |
+| `POST` | `/api/v1/ai/proposals/{id}/reject` | Dismiss / Reject action proposal | Operator, Admin, Owner |
+| `POST` | `/api/v1/ai/analyze/{incidentId}` | Send incident details & correlated system logs to Python AI engine for diagnosis | Admin, Owner |
+
+#### ⚠️ Anomaly Incidents & System Alerts (`/api/v1/incidents`)
+| Method | Endpoint | Description | RBAC Access |
+|---|---|---|---|
+| `GET` | `/api/v1/incidents` | List detected infrastructure incidents (OOM, crashed services, disk full) | Viewer, Operator, Admin, Owner |
+| `GET` | `/api/v1/incidents/{id}` | Fetch detailed incident telemetry snapshot and root cause inference | Viewer, Operator, Admin, Owner |
+| `POST` | `/api/v1/incidents/{id}/resolve` | Mark incident as resolved | Operator, Admin, Owner |
+
+#### 🔔 Notifications & Security Audit Logs (`/api/v1/notifications`, `/api/v1/audit-logs`)
+| Method | Endpoint | Description | RBAC Access |
+|---|---|---|---|
+| `GET` | `/api/v1/notifications` | List user notification feed (invitations, deployments, security warnings) | Authenticated User |
+| `GET` | `/api/v1/notifications/unread-count` | Get count of unread notifications | Authenticated User |
+| `PATCH` | `/api/v1/notifications/{id}/read` | Mark individual notification as read | Authenticated User |
+| `POST` | `/api/v1/notifications/read-all` | Mark all user notifications as read | Authenticated User |
+| `DELETE` | `/api/v1/notifications/{id}` | Delete a notification item | Authenticated User |
+| `DELETE` | `/api/v1/notifications/clear` | Clear all notifications | Authenticated User |
+| `GET` | `/api/v1/audit-logs` | Immutable audit trail of administrative, deployment, and firewall actions | Admin, Owner |
+
+#### 💳 Subscription & Tenant Quotas (`/api/v1/billing`)
+| Method | Endpoint | Description | RBAC Access |
+|---|---|---|---|
+| `GET` | `/api/v1/billing/plans` | List available subscription tiers (Free, Pro, Enterprise) and resource quotas | Authenticated User |
+| `GET` | `/api/v1/billing/subscription` | Fetch current organization subscription plan, server limit, and usage | Authenticated User |
+| `POST` | `/api/v1/billing/subscribe` | Upgrade or switch organization subscription tier | Owner |
+
+---
+
+### 🟣 2. Spring-WS SOAP Web Service (`nexus-soap-service` — Port `8082`)
+
+Built for enterprise interoperability with contract-first XML Web Services:
+
+* **WSDL Definition URL:** `http://localhost:8082/ws/servers.wsdl`
+* **SOAP Service Endpoint:** `http://localhost:8082/ws`
+* **Target Namespace:** `http://nexus.com/soap`
+
+#### Operations:
+| Operation Request | Description | Sample XML Payload |
+|---|---|---|
+| `GetServerStatusRequest` | Retrieves live server health, agent version, and CPU/RAM telemetry for an enterprise server ID | `<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:nex="http://nexus.com/soap"><soapenv:Body><nex:GetServerStatusRequest><nex:serverId>SERVER_UUID</nex:serverId></nex:GetServerStatusRequest></soapenv:Body></soapenv:Envelope>` |
+| `EmergencyLockdownRequest` | Triggers emergency enterprise isolation mode, restricting all remote firewall ports via UFW | `<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:nex="http://nexus.com/soap"><soapenv:Body><nex:EmergencyLockdownRequest><nex:serverId>SERVER_UUID</nex:serverId><nex:reason>Security Threat</nex:reason></nex:EmergencyLockdownRequest></soapenv:Body></soapenv:Envelope>` |
+
+---
+
+### 🔵 3. gRPC High-Frequency Binary RPC (`nexus-grpc-service` — Port `9090`)
+
+High-throughput, sub-millisecond binary communication over HTTP/2 using Protocol Buffers v3:
+
+* **Service Definition:** `com.nexus.grpc.AgentService`
+* **Proto Contract:** `services/nexus-backend/nexus-grpc-service/src/main/proto/nexus_agent.proto`
+
+#### RPC Methods:
+| RPC Method | Request Type | Response Type | Description |
+|---|---|---|---|
+| `ReportHeartbeat` | `HeartbeatRequest` (`serverId`, `agentVersion`, `timestamp`) | `HeartbeatResponse` (`acknowledged`, `serverStatus`) | High-frequency heartbeat verifying node availability |
+| `StreamTelemetry` | `TelemetryRecord` (`serverId`, `cpuPercent`, `memoryPercent`, `diskPercent`, `timestamp`) | `TelemetryAck` (`success`, `message`) | Real-time binary telemetry streaming directly from Go agent |
+| `FetchPendingJob` | `JobPollRequest` (`serverId`) | `JobPollResponse` (`hasJob`, `jobId`, `jobType`, `payload`) | Sub-millisecond queue check for pending remote tasks |
+
+---
+
+### 🧠 4. AI Diagnostic & Inference Engine (`nexus-ai-engine` — Port `8001`)
+
+Python 3.11 FastAPI service delivering explainable root-cause diagnosis and deterministic Action Proposals:
+
+| Method | Endpoint | Request Body | Description |
+|---|---|---|---|
+| `GET` | `/health` | None | Engine liveness and dependency status |
+| `POST` | `/analyze` | `AnalysisRequest` (`incident_id`, `title`, `redacted_logs`) | Correlates anomaly titles with logs, determines root cause, and returns `AnalysisResponse` containing confidence scores and actionable `ActionProposalRecommendation` (e.g. `service.restart`, `disk.cleanup_cache`) |
+
+---
+
+### 🧪 API & Protocol Testing Cheat-Sheet
 
 ```bash
-# 1. REST API: List servers
-curl -s http://localhost:4000/api/v1/servers | jq
+# 1. REST API: Authenticate & Retrieve JWT Token
+TOKEN=$(curl -s -X POST http://localhost:4000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"rafaaselmi6@gmail.com","password":"password123"}' | jq -r '.data.accessToken')
 
-# 2. REST API: Inspect real-time server telemetry
-curl -s http://localhost:4000/api/v1/servers/<SERVER_ID>/metrics | jq
+# 2. REST API: List Enrolled Servers
+curl -s -H "Authorization: Bearer $TOKEN" http://localhost:4000/api/v1/servers | jq
 
-# 3. REST API: Inspect host firewall rules
-curl -s http://localhost:4000/api/v1/servers/<SERVER_ID>/firewall | jq
+# 3. REST API: Inspect Real-Time Server Telemetry
+curl -s -H "Authorization: Bearer $TOKEN" http://localhost:4000/api/v1/servers/<SERVER_ID>/metrics | jq
 
-# 4. SOAP Service: Inspect WSDL contract
+# 4. REST API: Inspect Host Firewall Rules
+curl -s -H "Authorization: Bearer $TOKEN" http://localhost:4000/api/v1/servers/<SERVER_ID>/firewall | jq
+
+# 5. SOAP Web Service: Inspect WSDL Schema
 curl -s http://localhost:8082/ws/servers.wsdl
 
-# 5. gRPC Service: List RPC endpoints via grpcurl
+# 6. gRPC Service: Inspect via grpcurl
 grpcurl -plaintext localhost:9090 list
 
-# 6. AI Engine Health
+# 7. AI Diagnostic Engine: Check Health
 curl -s http://localhost:8001/health | jq
 ```
 
