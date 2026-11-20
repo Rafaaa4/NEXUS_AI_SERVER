@@ -35,16 +35,23 @@ public class NotificationService {
         NotificationEntity notification = new NotificationEntity(organizationId, title, message, type, severity, link);
         notification.setUserId(userId);
         NotificationEntity saved = notificationRepository.save(notification);
-        log.info("📢 Emitted Notification [{}]: {} - {}", type, title, message);
+        log.info("📢 Emitted Notification [{}]: {} - {} (Target User: {})", type, title, message, userId);
         return saved;
     }
 
-    public List<NotificationEntity> getNotifications(UUID organizationId, Boolean unreadOnly, Integer limit) {
+    public List<NotificationEntity> getNotifications(UUID organizationId, UUID userId, Boolean unreadOnly, Integer limit) {
         ensureInitialNotifications(organizationId);
 
-        List<NotificationEntity> list = (Boolean.TRUE.equals(unreadOnly))
-                ? notificationRepository.findByOrganizationIdAndReadFalseOrderByCreatedAtDesc(organizationId)
-                : notificationRepository.findByOrganizationIdOrderByCreatedAtDesc(organizationId);
+        List<NotificationEntity> list;
+        if (userId != null) {
+            list = Boolean.TRUE.equals(unreadOnly)
+                    ? notificationRepository.findUnreadForOrgAndUser(organizationId, userId)
+                    : notificationRepository.findForOrgAndUser(organizationId, userId);
+        } else {
+            list = Boolean.TRUE.equals(unreadOnly)
+                    ? notificationRepository.findByOrganizationIdAndReadFalseOrderByCreatedAtDesc(organizationId)
+                    : notificationRepository.findByOrganizationIdOrderByCreatedAtDesc(organizationId);
+        }
 
         if (limit != null && limit > 0 && list.size() > limit) {
             return list.subList(0, limit);
@@ -52,8 +59,11 @@ public class NotificationService {
         return list;
     }
 
-    public long getUnreadCount(UUID organizationId) {
+    public long getUnreadCount(UUID organizationId, UUID userId) {
         ensureInitialNotifications(organizationId);
+        if (userId != null) {
+            return notificationRepository.countUnreadForOrgAndUser(organizationId, userId);
+        }
         return notificationRepository.countByOrganizationIdAndReadFalse(organizationId);
     }
 
@@ -67,7 +77,10 @@ public class NotificationService {
     }
 
     @Transactional
-    public int markAllAsRead(UUID organizationId) {
+    public int markAllAsRead(UUID organizationId, UUID userId) {
+        if (userId != null) {
+            return notificationRepository.markAllAsReadForOrgAndUser(organizationId, userId);
+        }
         return notificationRepository.markAllAsRead(organizationId);
     }
 
@@ -81,7 +94,10 @@ public class NotificationService {
     }
 
     @Transactional
-    public int clearRead(UUID organizationId) {
+    public int clearRead(UUID organizationId, UUID userId) {
+        if (userId != null) {
+            return notificationRepository.deleteReadForOrgAndUser(organizationId, userId);
+        }
         return notificationRepository.deleteReadByOrganizationId(organizationId);
     }
 

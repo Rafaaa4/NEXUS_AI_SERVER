@@ -20,6 +20,25 @@ public interface NotificationRepository extends JpaRepository<NotificationEntity
 
     long countByOrganizationIdAndReadFalse(UUID organizationId);
 
+    @Query("SELECT n FROM NotificationEntity n WHERE (n.organizationId = :organizationId OR (n.userId IS NOT NULL AND n.userId = :userId)) ORDER BY n.createdAt DESC")
+    List<NotificationEntity> findForOrgAndUser(@Param("organizationId") UUID organizationId, @Param("userId") UUID userId);
+
+    @Query("SELECT n FROM NotificationEntity n WHERE (n.organizationId = :organizationId OR (n.userId IS NOT NULL AND n.userId = :userId)) AND n.read = false ORDER BY n.createdAt DESC")
+    List<NotificationEntity> findUnreadForOrgAndUser(@Param("organizationId") UUID organizationId, @Param("userId") UUID userId);
+
+    @Query("SELECT COUNT(n) FROM NotificationEntity n WHERE (n.organizationId = :organizationId OR (n.userId IS NOT NULL AND n.userId = :userId)) AND n.read = false")
+    long countUnreadForOrgAndUser(@Param("organizationId") UUID organizationId, @Param("userId") UUID userId);
+
+    @Transactional
+    @Modifying
+    @Query("UPDATE NotificationEntity n SET n.read = true, n.readAt = CURRENT_TIMESTAMP WHERE (n.organizationId = :organizationId OR (n.userId IS NOT NULL AND n.userId = :userId)) AND n.read = false")
+    int markAllAsReadForOrgAndUser(@Param("organizationId") UUID organizationId, @Param("userId") UUID userId);
+
+    @Transactional
+    @Modifying
+    @Query("DELETE FROM NotificationEntity n WHERE (n.organizationId = :organizationId OR (n.userId IS NOT NULL AND n.userId = :userId)) AND n.read = true")
+    int deleteReadForOrgAndUser(@Param("organizationId") UUID organizationId, @Param("userId") UUID userId);
+
     @Transactional
     @Modifying
     @Query("UPDATE NotificationEntity n SET n.read = true, n.readAt = CURRENT_TIMESTAMP WHERE n.organizationId = :organizationId AND n.read = false")

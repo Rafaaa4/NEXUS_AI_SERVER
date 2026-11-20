@@ -57,7 +57,7 @@ const VALID_TABS: Record<string, NavSection> = {
 };
 
 export const Dashboard: React.FC = () => {
-  const { currentOrg } = useAuth();
+  const { currentOrg, refreshUserOrgs } = useAuth();
   const { isBusiness } = useMode();
 
   // Navigation State with URL synchronization
@@ -181,7 +181,10 @@ export const Dashboard: React.FC = () => {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 4000);
+    refreshUserOrgs();
+    const interval = setInterval(() => {
+      fetchData();
+    }, 4000);
     return () => clearInterval(interval);
   }, [currentOrg]);
 

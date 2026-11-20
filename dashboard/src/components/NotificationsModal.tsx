@@ -14,9 +14,11 @@ import {
   Server,
   Activity,
   Info,
+  Building,
 } from 'lucide-react';
 import { AppNotification } from '../services/api';
 import { NavSection } from './Sidebar';
+import { useAuth } from '../context/AuthContext';
 
 interface Props {
   isOpen: boolean;
@@ -45,8 +47,23 @@ export const NotificationsModal: React.FC<Props> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('all');
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
+  const { currentOrg, organizations, setCurrentOrg, refreshUserOrgs } = useAuth();
 
   if (!isOpen) return null;
+
+  const handleSwitchOrgAndNavigate = async (e: React.MouseEvent, orgId: string, item: AppNotification) => {
+    e.stopPropagation();
+    await onMarkRead(item.id);
+    const updatedOrgs = await refreshUserOrgs();
+    const target = updatedOrgs.find((o) => o.id === orgId) || organizations.find((o) => o.id === orgId);
+    if (target) {
+      setCurrentOrg(target);
+    }
+    if (onNavigate) {
+      onNavigate('team');
+    }
+    onClose();
+  };
 
   // Filter based on active tab
   const filteredNotifications = notifications.filter((item) => {
@@ -337,6 +354,18 @@ export const NotificationsModal: React.FC<Props> = ({
                 <p className="text-xs text-slate-400 mt-1.5 pl-8 leading-relaxed">
                   {item.message}
                 </p>
+
+                {item.organizationId && currentOrg?.id !== item.organizationId && (
+                  <div className="mt-2.5 pl-8 flex items-center">
+                    <button
+                      onClick={(e) => handleSwitchOrgAndNavigate(e, item.organizationId, item)}
+                      className="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold flex items-center space-x-1.5 shadow-md shadow-blue-600/30 transition"
+                    >
+                      <Building className="h-3.5 w-3.5" />
+                      <span>Switch to this Team Workspace</span>
+                    </button>
+                  </div>
+                )}
 
                 {item.link && (
                   <div className="mt-2 pl-8 flex items-center justify-between text-[11px] text-blue-400/90 hover:text-blue-300">

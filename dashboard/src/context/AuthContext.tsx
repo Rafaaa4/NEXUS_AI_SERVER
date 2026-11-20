@@ -6,6 +6,7 @@ interface AuthContextType {
   organizations: Organization[];
   currentOrg: Organization | null;
   setCurrentOrg: (org: Organization) => void;
+  refreshUserOrgs: () => Promise<Organization[]>;
   login: (token: string, refresh: string, user: User, orgs: Organization[]) => void;
   logout: () => void;
   loading: boolean;
@@ -51,6 +52,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem('nexus_current_org_id', org.id);
   };
 
+  const refreshUserOrgs = async (): Promise<Organization[]> => {
+    try {
+      const data = await api.getMe();
+      if (data?.organizations) {
+        setOrganizations(data.organizations);
+        if (data.user) setUser(data.user);
+        // If current organization was lost or not set, select first or saved
+        if (!currentOrg && data.organizations.length > 0) {
+          const savedOrgId = localStorage.getItem('nexus_current_org_id');
+          const found = data.organizations.find((o) => o.id === savedOrgId) || data.organizations[0];
+          setCurrentOrgState(found);
+          localStorage.setItem('nexus_current_org_id', found.id);
+        }
+        return data.organizations;
+      }
+    } catch (err) {
+      console.warn('Failed to refresh user orgs:', err);
+    }
+    return organizations;
+  };
+
   const login = (token: string, refresh: string, userData: User, orgs: Organization[]) => {
     localStorage.setItem('nexus_access_token', token);
     localStorage.setItem('nexus_refresh_token', refresh);
@@ -78,6 +100,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         organizations,
         currentOrg,
         setCurrentOrg,
+        refreshUserOrgs,
         login,
         logout,
         loading,

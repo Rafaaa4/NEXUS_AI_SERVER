@@ -3,6 +3,7 @@ package com.nexus.rest.controller;
 import com.nexus.common.entity.NotificationEntity;
 import com.nexus.rest.service.NotificationService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
@@ -26,14 +27,26 @@ public class NotificationController {
         return UUID.fromString("1ab47797-365b-45a8-80aa-4692d020134f");
     }
 
+    private UUID resolveUserId() {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() != null) {
+            String principal = auth.getPrincipal().toString();
+            try {
+                return UUID.fromString(principal);
+            } catch (Exception ignored) {}
+        }
+        return null;
+    }
+
     @GetMapping
     public ResponseEntity<?> listNotifications(
             @RequestParam(required = false, defaultValue = "false") Boolean unreadOnly,
             @RequestParam(required = false, defaultValue = "50") Integer limit,
             @RequestHeader(value = "x-organization-id", required = false) String orgHeader) {
         UUID orgId = resolveOrgId(orgHeader);
-        List<NotificationEntity> list = notificationService.getNotifications(orgId, unreadOnly, limit);
-        long unreadCount = notificationService.getUnreadCount(orgId);
+        UUID userId = resolveUserId();
+        List<NotificationEntity> list = notificationService.getNotifications(orgId, userId, unreadOnly, limit);
+        long unreadCount = notificationService.getUnreadCount(orgId, userId);
 
         Map<String, Object> resp = new HashMap<>();
         resp.put("success", true);
@@ -47,7 +60,8 @@ public class NotificationController {
     public ResponseEntity<?> getUnreadCount(
             @RequestHeader(value = "x-organization-id", required = false) String orgHeader) {
         UUID orgId = resolveOrgId(orgHeader);
-        long unreadCount = notificationService.getUnreadCount(orgId);
+        UUID userId = resolveUserId();
+        long unreadCount = notificationService.getUnreadCount(orgId, userId);
         return ResponseEntity.ok(Map.of("success", true, "unreadCount", unreadCount));
     }
 
@@ -62,7 +76,8 @@ public class NotificationController {
     public ResponseEntity<?> markAllAsRead(
             @RequestHeader(value = "x-organization-id", required = false) String orgHeader) {
         UUID orgId = resolveOrgId(orgHeader);
-        int updated = notificationService.markAllAsRead(orgId);
+        UUID userId = resolveUserId();
+        int updated = notificationService.markAllAsRead(orgId, userId);
         return ResponseEntity.ok(Map.of("success", true, "updated", updated));
     }
 
@@ -79,7 +94,8 @@ public class NotificationController {
     public ResponseEntity<?> clearRead(
             @RequestHeader(value = "x-organization-id", required = false) String orgHeader) {
         UUID orgId = resolveOrgId(orgHeader);
-        int cleared = notificationService.clearRead(orgId);
+        UUID userId = resolveUserId();
+        int cleared = notificationService.clearRead(orgId, userId);
         return ResponseEntity.ok(Map.of("success", true, "clearedCount", cleared));
     }
 
@@ -88,7 +104,8 @@ public class NotificationController {
             String message,
             String type,
             String severity,
-            String link
+            String link,
+            UUID targetUserId
     ) {}
 
     @PostMapping
@@ -101,6 +118,7 @@ public class NotificationController {
         UUID orgId = resolveOrgId(orgHeader);
         NotificationEntity created = notificationService.send(
                 orgId,
+                req.targetUserId(),
                 req.title().trim(),
                 req.message() != null ? req.message().trim() : "",
                 req.type() != null ? req.type() : "system",

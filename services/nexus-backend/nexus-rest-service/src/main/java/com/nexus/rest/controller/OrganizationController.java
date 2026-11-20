@@ -48,7 +48,16 @@ public class OrganizationController {
             map.put("userId", m.getUserId().toString());
             map.put("organizationId", m.getOrganizationId().toString());
             map.put("role", m.getRole());
+            map.put("status", "active");
             map.put("createdAt", m.getCreatedAt() != null ? m.getCreatedAt().toString() : OffsetDateTime.now().toString());
+
+            String permissions = switch (m.getRole().toLowerCase()) {
+                case "owner" -> "Full Control (Billing, Servers, Team, AI Remediations)";
+                case "admin" -> "Infrastructure Admin (Servers, Invites, AI Diagnostics, Security)";
+                case "operator" -> "Deployments & Workloads (Deploy, Rollback, Restarts, Databases)";
+                default -> "Read-Only Visibility (Metrics, System Logs, Telemetry)";
+            };
+            map.put("permissions", permissions);
 
             var userOpt = userRepository.findById(m.getUserId());
             if (userOpt.isPresent()) {
@@ -56,7 +65,7 @@ public class OrganizationController {
                 map.put("user", Map.of(
                     "id", u.getId().toString(),
                     "email", u.getEmail(),
-                    "fullName", u.getFullName() != null ? u.getFullName() : ""
+                    "fullName", u.getFullName() != null && !u.getFullName().isBlank() ? u.getFullName() : u.getEmail().split("@")[0]
                 ));
             } else {
                 map.put("user", Map.of(
@@ -92,12 +101,27 @@ public class OrganizationController {
         membership.setRole(role);
         membershipRepository.save(membership);
 
+        String orgName = organizationRepository.findById(id).map(OrganizationEntity::getName).orElse("your team");
+
+        // 1. Notify the organization feed
         notificationService.send(
             id,
+            null,
             "Team Member Added: " + email,
-            "User " + email + " assigned role '" + role + "' in organization.",
+            "User " + email + " assigned role '" + role + "' in " + orgName + ".",
             "member",
             "info",
+            "team"
+        );
+
+        // 2. Notify the invited user directly (cross-tenant delivery)
+        notificationService.send(
+            id,
+            user.getId(),
+            "Team Invitation: " + orgName,
+            "You were invited to join " + orgName + " with role '" + role.toUpperCase() + "'. Switch organization in top navbar to collaborate.",
+            "member",
+            "success",
             "team"
         );
 
