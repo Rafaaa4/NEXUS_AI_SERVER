@@ -13,6 +13,7 @@ import {
   Key,
   Info,
   Lock,
+  ChevronDown,
 } from 'lucide-react';
 import { api, Organization } from '../../services/api';
 import { InviteMemberModal } from '../../components/InviteMemberModal';
@@ -27,6 +28,8 @@ export const TeamView: React.FC<Props> = ({ currentOrg }) => {
   const [members, setMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [isInviteOpen, setIsInviteOpen] = useState(false);
+  const [updatingRoleId, setUpdatingRoleId] = useState<string | null>(null);
+  const [actionNotice, setActionNotice] = useState<string | null>(null);
 
   useEffect(() => {
     if (!currentOrg) return;
@@ -51,9 +54,27 @@ export const TeamView: React.FC<Props> = ({ currentOrg }) => {
     if (!currentOrg || !confirm('Are you sure you want to revoke this user access?')) return;
     try {
       await api.removeMember(currentOrg.id, userId);
+      setActionNotice('Member access revoked successfully.');
+      setTimeout(() => setActionNotice(null), 4000);
       loadMembers();
     } catch (err: any) {
       alert(err.message || 'Failed to remove member');
+    }
+  };
+
+  const handleUpdateRole = async (userId: string, newRole: string) => {
+    if (!currentOrg) return;
+    setUpdatingRoleId(userId);
+    try {
+      await api.updateMemberRole(currentOrg.id, userId, newRole);
+      setActionNotice(`Member role updated to ${newRole.toUpperCase()} successfully.`);
+      setTimeout(() => setActionNotice(null), 4000);
+      await loadMembers();
+      refreshUserOrgs();
+    } catch (err: any) {
+      alert(err.message || 'Failed to update member role');
+    } finally {
+      setUpdatingRoleId(null);
     }
   };
 
@@ -130,6 +151,14 @@ export const TeamView: React.FC<Props> = ({ currentOrg }) => {
         </div>
       )}
 
+      {/* Toast Notice */}
+      {actionNotice && (
+        <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-2xl text-xs font-semibold flex items-center space-x-2 animate-fadeIn shadow-lg">
+          <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
+          <span>{actionNotice}</span>
+        </div>
+      )}
+
       {/* Header and Controls */}
       <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-6 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -194,7 +223,16 @@ export const TeamView: React.FC<Props> = ({ currentOrg }) => {
               <tr>
                 <th className="px-6 py-3.5">Member</th>
                 <th className="px-6 py-3.5">Email</th>
-                <th className="px-6 py-3.5">Assigned Role</th>
+                <th className="px-6 py-3.5">
+                  <div className="flex items-center space-x-1.5">
+                    <span>Assigned Role</span>
+                    {isOwnerOrAdmin && (
+                      <span className="text-[10px] text-blue-400 font-normal">
+                        (Select to change)
+                      </span>
+                    )}
+                  </div>
+                </th>
                 <th className="px-6 py-3.5">Access & Granular Permissions</th>
                 <th className="px-6 py-3.5">Status</th>
                 <th className="px-6 py-3.5">Joined Date</th>
@@ -241,19 +279,42 @@ export const TeamView: React.FC<Props> = ({ currentOrg }) => {
                       </td>
 
                       <td className="px-6 py-4">
-                        <span
-                          className={`text-[10px] font-mono px-2.5 py-1 rounded-full font-bold uppercase tracking-wider ${
-                            m.role === 'owner'
-                              ? 'bg-purple-500/15 text-purple-400 border border-purple-500/30'
-                              : m.role === 'admin'
-                              ? 'bg-blue-500/15 text-blue-400 border border-blue-500/30'
-                              : m.role === 'operator'
-                              ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                              : 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
-                          }`}
-                        >
-                          {m.role}
-                        </span>
+                        {isOwnerOrAdmin && m.role !== 'owner' && !isCurrent ? (
+                          <div className="relative inline-flex items-center group">
+                            <select
+                              value={m.role}
+                              disabled={updatingRoleId === m.userId}
+                              onChange={(e) => handleUpdateRole(m.userId, e.target.value)}
+                              className={`text-[10px] font-mono font-bold uppercase rounded-full pl-3 pr-7 py-1 border transition cursor-pointer appearance-none focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-sm ${
+                                m.role === 'admin'
+                                  ? 'bg-blue-950/80 text-blue-300 border-blue-500/40 hover:border-blue-400'
+                                  : m.role === 'operator'
+                                  ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/40 hover:border-emerald-400'
+                                  : 'bg-amber-950/80 text-amber-300 border-amber-500/40 hover:border-amber-400'
+                              } ${updatingRoleId === m.userId ? 'opacity-50 cursor-wait' : ''}`}
+                              title="Click to modify member role"
+                            >
+                              <option value="admin" className="bg-slate-900 text-blue-300">ADMIN</option>
+                              <option value="operator" className="bg-slate-900 text-emerald-300">OPERATOR</option>
+                              <option value="viewer" className="bg-slate-900 text-amber-300">VIEWER</option>
+                            </select>
+                            <ChevronDown className="h-3 w-3 absolute right-2 pointer-events-none text-slate-400 group-hover:text-white transition" />
+                          </div>
+                        ) : (
+                          <span
+                            className={`text-[10px] font-mono px-2.5 py-1 rounded-full font-bold uppercase tracking-wider ${
+                              m.role === 'owner'
+                                ? 'bg-purple-500/15 text-purple-400 border border-purple-500/30'
+                                : m.role === 'admin'
+                                ? 'bg-blue-500/15 text-blue-400 border border-blue-500/30'
+                                : m.role === 'operator'
+                                ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                                : 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+                            }`}
+                          >
+                            {m.role}
+                          </span>
+                        )}
                       </td>
 
                       <td className="px-6 py-4 text-[11px] text-slate-400 max-w-xs">
