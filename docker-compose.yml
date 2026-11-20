@@ -2,7 +2,7 @@ services:
   postgres:
     image: postgres:16
     container_name: nexus-postgres
-    restart: unless-stopped
+    restart: "no"
     environment:
       POSTGRES_USER: nexus
       POSTGRES_PASSWORD: nexus_dev_password
@@ -21,7 +21,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: nexus-redis
-    restart: unless-stopped
+    restart: "no"
     ports:
       - "6379:6379"
     volumes:
@@ -38,7 +38,7 @@ services:
       context: services/nexus-backend/nexus-rest-service
       dockerfile: Dockerfile
     container_name: nexus-rest-service
-    restart: unless-stopped
+    restart: "no"
     ports:
       - "4000:4000"
     environment:
@@ -60,7 +60,7 @@ services:
       context: services/nexus-backend/nexus-soap-service
       dockerfile: Dockerfile
     container_name: nexus-soap-service
-    restart: unless-stopped
+    restart: "no"
     ports:
       - "8082:8082"
     environment:
@@ -77,7 +77,7 @@ services:
       context: services/nexus-backend/nexus-grpc-service
       dockerfile: Dockerfile
     container_name: nexus-grpc-service
-    restart: unless-stopped
+    restart: "no"
     ports:
       - "9090:9090"
       - "8083:8083"
@@ -94,7 +94,7 @@ services:
       context: services/ai-engine
       dockerfile: Dockerfile
     container_name: nexus-ai-engine
-    restart: unless-stopped
+    restart: "no"
     ports:
       - "8001:8001"
     environment:
@@ -105,7 +105,7 @@ services:
       context: .
       dockerfile: dashboard/Dockerfile
     container_name: nexus-dashboard
-    restart: unless-stopped
+    restart: "no"
     ports:
       - "3000:3000"
     depends_on:
