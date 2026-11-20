@@ -294,6 +294,13 @@ class ApiService {
     );
   }
 
+  async installDocker(serverId: string) {
+    return this.request<{ success: boolean; data: { jobId: string; message: string } }>(
+      `/servers/${serverId}/install-docker`,
+      { method: 'POST' }
+    );
+  }
+
   async getJobStatus(jobId: string) {
     return this.request<{ success: boolean; data: any }>(`/servers/jobs/${jobId}`);
   }

@@ -227,6 +227,27 @@ public class ServerController {
         ));
     }
 
+    @PostMapping("/{id}/install-docker")
+    public ResponseEntity<?> installDocker(@PathVariable UUID id,
+                                          @RequestHeader(value = "x-organization-id", required = false) String orgHeader) {
+        UUID orgId = orgHeader != null && !orgHeader.isEmpty() ? UUID.fromString(orgHeader) : UUID.fromString("1ab47797-365b-45a8-80aa-4692d020134f");
+        JobEntity job = new JobEntity();
+        job.setOrganizationId(orgId);
+        job.setServerId(id);
+        job.setJobType("provision.docker");
+        job.setStatus("queued");
+        job.setCreatedAt(OffsetDateTime.now());
+        jobRepository.save(job);
+
+        return ResponseEntity.ok(Map.of(
+            "success", true,
+            "data", Map.of(
+                "jobId", job.getId().toString(),
+                "message", "Docker installation dispatched to server agent"
+            )
+        ));
+    }
+
     @GetMapping("/jobs/{jobId}")
     public ResponseEntity<?> getJobStatus(@PathVariable UUID jobId) {
         return jobRepository.findById(jobId).map(job -> {

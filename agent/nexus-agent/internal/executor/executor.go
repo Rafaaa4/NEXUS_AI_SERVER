@@ -325,27 +325,7 @@ WantedBy=multi-user.target
 	case "provision.docker":
 		var logs strings.Builder
 		logs.WriteString(fmt.Sprintf("[%s] Starting Docker & Container runtime provisioning...\n", time.Now().Format(time.RFC3339)))
-
-		// Check if docker already installed
-		if out, err := exec.Command("docker", "--version").CombinedOutput(); err == nil {
-			logs.WriteString(fmt.Sprintf("[%s] Docker is already installed: %s\n", time.Now().Format(time.RFC3339), strings.TrimSpace(string(out))))
-		} else {
-			logs.WriteString(fmt.Sprintf("[%s] Installing Docker packages via apt...\n", time.Now().Format(time.RFC3339)))
-			cmd := exec.Command("apt-get", "update", "-y")
-			_ = cmd.Run()
-			installCmd := exec.Command("apt-get", "install", "-y", "docker.io", "docker-compose-v2")
-			outInst, errInst := installCmd.CombinedOutput()
-			if errInst != nil {
-				logs.WriteString(fmt.Sprintf("[%s] Notice: %s (%v)\n", time.Now().Format(time.RFC3339), string(outInst), errInst))
-			} else {
-				logs.WriteString(fmt.Sprintf("[%s] Docker packages installed successfully.\n", time.Now().Format(time.RFC3339)))
-			}
-		}
-
-		_ = exec.Command("systemctl", "enable", "--now", "docker").Run()
-		logs.WriteString(fmt.Sprintf("[%s] Docker daemon active and listening on /var/run/docker.sock\n", time.Now().Format(time.RFC3339)))
-		logs.WriteString(fmt.Sprintf("[%s] ✅ Docker & Compose Engine provisioned successfully.\n", time.Now().Format(time.RFC3339)))
-
+		ensureDockerInstalled(&logs)
 		res.Status = "completed"
 		res.Output = logs.String()
 		return res
@@ -479,19 +459,42 @@ func detectProject(dir string) DetectedProject {
 		IsSSR:     false,
 	}
 
-	// 1. Docker
-	if _, err := os.Stat(filepath.Join(dir, "docker-compose.yml")); err == nil {
+	// 1. Docker (docker-compose or Dockerfile)
+	composePath := filepath.Join(dir, "docker-compose.yml")
+	if _, err := os.Stat(composePath); os.IsNotExist(err) {
+		composePath = filepath.Join(dir, "docker-compose.yaml")
+	}
+	if _, err := os.Stat(composePath); err == nil {
 		proj.Type = "docker"
-		proj.Framework = "docker"
-		proj.Port = 80
+		proj.Framework = "docker_compose"
+		proj.Port = 3000
 		proj.IsSSR = true
 		return proj
 	}
-	if _, err := os.Stat(filepath.Join(dir, "Dockerfile")); err == nil {
+	dockerfilePath := filepath.Join(dir, "Dockerfile")
+	if _, err := os.Stat(dockerfilePath); err == nil {
 		proj.Type = "docker"
 		proj.Framework = "docker"
-		proj.Port = 80
+		proj.Port = 3000
 		proj.IsSSR = true
+
+		// Check if Dockerfile exposes a specific port
+		if dfData, err := os.ReadFile(dockerfilePath); err == nil {
+			lines := strings.Split(string(dfData), "\n")
+			for _, l := range lines {
+				trimmed := strings.TrimSpace(l)
+				if strings.HasPrefix(strings.ToUpper(trimmed), "EXPOSE") {
+					parts := strings.Fields(trimmed)
+					if len(parts) >= 2 {
+						var expPort int
+						if _, err := fmt.Sscanf(parts[1], "%d", &expPort); err == nil && expPort > 0 {
+							proj.Port = expPort
+							break
+						}
+					}
+				}
+			}
+		}
 		return proj
 	}
 
@@ -833,11 +836,64 @@ func (e *RestrictedExecutor) executeDeploymentRun(job *ExecutionJob) *ExecutionR
 		}
 
 	case "docker":
-		logs.WriteString(fmt.Sprintf("[%s] [STAGE: Configuring Runtime] Starting containerized stack...\n", time.Now().Format(time.RFC3339)))
+		logs.WriteString(fmt.Sprintf("[%s] [STAGE: Configuring Docker] Verifying Docker environment on host...\n", time.Now().Format(time.RFC3339)))
+		ensureDockerInstalled(&logs)
+
 		composeFile := filepath.Join(releaseDir, "docker-compose.yml")
+		if _, err := os.Stat(composeFile); os.IsNotExist(err) {
+			composeFile = filepath.Join(releaseDir, "docker-compose.yaml")
+		}
+
 		if _, err := os.Stat(composeFile); err == nil {
-			_ = exec.Command("docker", "compose", "-f", composeFile, "up", "-d", "--build").Run()
-			logs.WriteString(fmt.Sprintf("[%s] Docker Compose stack launched.\n", time.Now().Format(time.RFC3339)))
+			logs.WriteString(fmt.Sprintf("[%s] [STAGE: Building Container Stack] Starting Docker Compose stack (%s)...\n", time.Now().Format(time.RFC3339), filepath.Base(composeFile)))
+			_ = exec.Command("docker", "compose", "-f", composeFile, "down").Run()
+			cmdUp := exec.Command("docker", "compose", "-f", composeFile, "up", "-d", "--build")
+			outUp, errUp := cmdUp.CombinedOutput()
+			if errUp != nil {
+				cmdLeg := exec.Command("docker-compose", "-f", composeFile, "up", "-d", "--build")
+				outLeg, _ := cmdLeg.CombinedOutput()
+				logs.WriteString(fmt.Sprintf("[%s] Docker Compose output: %s\n", time.Now().Format(time.RFC3339), string(outLeg)))
+			} else {
+				logs.WriteString(fmt.Sprintf("[%s] ✅ Docker Compose stack launched: %s\n", time.Now().Format(time.RFC3339), string(outUp)))
+			}
+		} else if _, err := os.Stat(filepath.Join(releaseDir, "Dockerfile")); err == nil {
+			containerName := fmt.Sprintf("%s-container", cleanAppName)
+			imageName := fmt.Sprintf("%s:latest", cleanAppName)
+			targetPort := proj.Port
+			if targetPort <= 0 || targetPort == 80 {
+				targetPort = 3000
+			}
+
+			logs.WriteString(fmt.Sprintf("[%s] [STAGE: Building Container] Building Docker image '%s' from Dockerfile...\n", time.Now().Format(time.RFC3339), imageName))
+			cmdBuild := exec.Command("docker", "build", "-t", imageName, releaseDir)
+			outBuild, errBuild := cmdBuild.CombinedOutput()
+			if errBuild != nil {
+				logs.WriteString(fmt.Sprintf("[%s] ❌ Docker build error: %s\n", time.Now().Format(time.RFC3339), string(outBuild)))
+				res.Status = "failed"
+				res.Error = fmt.Sprintf("Docker build failed: %s", string(outBuild))
+				res.Output = logs.String()
+				return res
+			}
+			logs.WriteString(fmt.Sprintf("[%s] ✅ Docker image '%s' built successfully.\n", time.Now().Format(time.RFC3339), imageName))
+
+			// Stop previous container if running
+			_ = exec.Command("docker", "rm", "-f", containerName).Run()
+
+			logs.WriteString(fmt.Sprintf("[%s] [STAGE: Launching Container] Starting container '%s' on port %d...\n", time.Now().Format(time.RFC3339), containerName, targetPort))
+			cmdRun := exec.Command("docker", "run", "-d",
+				"--name", containerName,
+				"--restart", "always",
+				"-p", fmt.Sprintf("127.0.0.1:%d:%d", targetPort, targetPort),
+				imageName,
+			)
+			outRun, errRun := cmdRun.CombinedOutput()
+			if errRun != nil {
+				logs.WriteString(fmt.Sprintf("[%s] Notice (%s). Retrying container on internal port 80...\n", time.Now().Format(time.RFC3339), string(outRun)))
+				_ = exec.Command("docker", "run", "-d", "--name", containerName, "--restart", "always", "-p", fmt.Sprintf("127.0.0.1:%d:80", targetPort), imageName).Run()
+			}
+			logs.WriteString(fmt.Sprintf("[%s] ✅ Container '%s' launched and healthy.\n", time.Now().Format(time.RFC3339), containerName))
+			proj.Port = targetPort
+			proj.IsSSR = true
 		}
 	}
 
@@ -1180,4 +1236,32 @@ func ensureNginxInstalled(logs *strings.Builder) {
 		_ = exec.Command("apt-get", "install", "-y", "nginx").Run()
 	}
 	_ = exec.Command("systemctl", "enable", "--now", "nginx").Run()
+}
+
+func ensureDockerInstalled(logs *strings.Builder) {
+	if _, err := exec.LookPath("docker"); err == nil {
+		_ = exec.Command("systemctl", "enable", "--now", "docker").Run()
+		_ = exec.Command("systemctl", "start", "docker").Run()
+		logs.WriteString(fmt.Sprintf("[%s] Docker engine verified and active.\n", time.Now().Format(time.RFC3339)))
+		return
+	}
+
+	logs.WriteString(fmt.Sprintf("[%s] 🐳 Docker not detected. Initiating automated Docker & Compose installation...\n", time.Now().Format(time.RFC3339)))
+	_ = exec.Command("dpkg", "--configure", "-a").Run()
+	_ = exec.Command("sh", "-c", "rm -f /var/lib/dpkg/lock* /var/lib/apt/lists/lock* /var/cache/apt/archives/lock*").Run()
+
+	instCmd := exec.Command("sh", "-c", "curl -fsSL https://get.docker.com | sh")
+	outInst, errInst := instCmd.CombinedOutput()
+	if errInst != nil {
+		logs.WriteString(fmt.Sprintf("[%s] Notice (%s). Installing Docker packages via apt...\n", time.Now().Format(time.RFC3339), string(outInst)))
+		_ = exec.Command("apt-get", "update", "-y").Run()
+		_ = exec.Command("apt-get", "install", "-y", "docker.io", "docker-compose-v2").Run()
+	} else {
+		logs.WriteString(fmt.Sprintf("[%s] Docker Engine & Compose v2 installed successfully.\n", time.Now().Format(time.RFC3339)))
+	}
+
+	_ = exec.Command("systemctl", "enable", "--now", "docker").Run()
+	_ = exec.Command("systemctl", "start", "docker").Run()
+	_ = exec.Command("usermod", "-aG", "docker", "www-data").Run()
+	logs.WriteString(fmt.Sprintf("[%s] ✅ Docker daemon active and ready.\n", time.Now().Format(time.RFC3339)))
 }

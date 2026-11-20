@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { api } from '../../services/api';
 import {
   Boxes,
   Play,
@@ -11,6 +12,7 @@ import {
   Layers,
   CheckCircle2,
   AlertTriangle,
+  DownloadCloud,
 } from 'lucide-react';
 
 interface Props {
@@ -21,6 +23,23 @@ interface Props {
 export const DockerView: React.FC<Props> = ({ servers, applications }) => {
   const [selectedServerId, setSelectedServerId] = useState(servers[0]?.id || '');
   const [activeLogsContainer, setActiveLogsContainer] = useState<string | null>(null);
+  const [installingDocker, setInstallingDocker] = useState(false);
+  const [dockerNotice, setDockerNotice] = useState<string | null>(null);
+
+  const handleInstallDocker = async () => {
+    if (!selectedServerId) return;
+    setInstallingDocker(true);
+    setDockerNotice(null);
+    try {
+      await api.installDocker(selectedServerId);
+      setDockerNotice('🐳 Docker & Compose Engine installation dispatched! Agent is provisioning the runtime.');
+    } catch (err: any) {
+      alert(err.message || 'Failed to dispatch Docker installation');
+    } finally {
+      setInstallingDocker(false);
+      setTimeout(() => setDockerNotice(null), 6000);
+    }
+  };
 
   // Live structure from applications & connected server deployments
   const containers = applications.map((app) => {
@@ -56,24 +75,44 @@ export const DockerView: React.FC<Props> = ({ servers, applications }) => {
           </p>
         </div>
 
-        {servers.length > 0 && (
-          <div className="flex items-center space-x-2 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs">
-            <Server className="h-4 w-4 text-slate-400" />
-            <span className="text-slate-400">Host:</span>
-            <select
-              value={selectedServerId}
-              onChange={(e) => setSelectedServerId(e.target.value)}
-              className="bg-transparent text-white font-semibold outline-none cursor-pointer"
-            >
-              {servers.map((s) => (
-                <option key={s.id} value={s.id} className="bg-slate-900 text-white">
-                  {s.name} ({s.status.toUpperCase()})
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
+        <div className="flex flex-wrap items-center gap-3">
+          {servers.length > 0 && (
+            <div className="flex items-center space-x-2 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs">
+              <Server className="h-4 w-4 text-slate-400" />
+              <span className="text-slate-400">Host:</span>
+              <select
+                value={selectedServerId}
+                onChange={(e) => setSelectedServerId(e.target.value)}
+                className="bg-transparent text-white font-semibold outline-none cursor-pointer"
+              >
+                {servers.map((s) => (
+                  <option key={s.id} value={s.id} className="bg-slate-900 text-white">
+                    {s.name} ({s.status.toUpperCase()})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <button
+            onClick={handleInstallDocker}
+            disabled={installingDocker || !selectedServerId}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl text-xs font-semibold flex items-center space-x-2 shadow-lg shadow-blue-600/25 transition"
+            title="Install or verify Docker Engine and Docker Compose v2 on the selected server"
+          >
+            <DownloadCloud className={`h-4 w-4 ${installingDocker ? 'animate-bounce' : ''}`} />
+            <span>{installingDocker ? 'Dispatching...' : 'Install Docker on Server'}</span>
+          </button>
+        </div>
       </div>
+
+      {/* Notice Toast */}
+      {dockerNotice && (
+        <div className="p-4 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded-2xl text-xs font-semibold flex items-center space-x-2 animate-fadeIn shadow-lg">
+          <CheckCircle2 className="h-4 w-4 shrink-0 text-blue-400" />
+          <span>{dockerNotice}</span>
+        </div>
+      )}
 
       {/* Containers Table Card */}
       <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl overflow-hidden shadow-xl">
