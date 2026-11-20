@@ -23,7 +23,7 @@ export const DeployModal: React.FC<Props> = ({
   const [repoUrl, setRepoUrl] = useState('');
   const [gitToken, setGitToken] = useState('');
   const [branch, setBranch] = useState('main');
-  const [framework, setFramework] = useState('react');
+  const [framework, setFramework] = useState('auto');
   const [port, setPort] = useState('80');
   const [bindNginx, setBindNginx] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -34,10 +34,9 @@ export const DeployModal: React.FC<Props> = ({
 
   const handleFrameworkChange = (val: string) => {
     setFramework(val);
-    if (val === 'react') setPort('80');
+    if (val === 'auto' || val === 'static' || val === 'react' || val === 'php' || val === 'docker') setPort('80');
     else if (val === 'node') setPort('3000');
     else if (val === 'python') setPort('8000');
-    else if (val === 'docker') setPort('80');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -177,10 +176,13 @@ export const DeployModal: React.FC<Props> = ({
                     onChange={(e) => handleFrameworkChange(e.target.value)}
                     className="w-full bg-slate-950 border border-slate-700/80 rounded-xl px-3 py-2 text-white text-xs"
                   >
-                    <option value="react">Static Web / HTML (Port 80)</option>
-                    <option value="python">Python / FastAPI / Flask</option>
-                    <option value="node">Node.js / Express / Next</option>
-                    <option value="docker">Docker Compose Stack</option>
+                    <option value="auto">⚡ Auto-Detect Framework</option>
+                    <option value="static">Static Web / HTML (Port 80)</option>
+                    <option value="react">React / Vite / Vue SPA (Port 80)</option>
+                    <option value="node">Node.js / Express / Next SSR (Port 3000)</option>
+                    <option value="python">Python / FastAPI / Flask / Django (Port 8000)</option>
+                    <option value="php">PHP / Laravel (Port 80)</option>
+                    <option value="docker">Docker Compose / Container Stack</option>
                   </select>
                 </div>
 

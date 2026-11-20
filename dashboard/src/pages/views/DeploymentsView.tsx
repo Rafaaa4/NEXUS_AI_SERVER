@@ -15,6 +15,7 @@ import {
   Edit3,
   X,
   AlertTriangle,
+  RotateCcw,
 } from 'lucide-react';
 import { api } from '../../services/api';
 
@@ -45,6 +46,21 @@ export const DeploymentsView: React.FC<Props> = ({
   const [deletingDep, setDeletingDep] = useState<any | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
+  const [rollingBackId, setRollingBackId] = useState<string | null>(null);
+
+  const handleRollback = async (dep: any) => {
+    setRollingBackId(dep.id);
+    try {
+      await api.rollbackDeployment(dep.id);
+      setActionNotice(`Rollback triggered for '${dep.appName}' to previous release.`);
+      if (onRefresh) onRefresh();
+    } catch (err: any) {
+      alert(err.message || 'Rollback failed');
+    } finally {
+      setRollingBackId(null);
+      setTimeout(() => setActionNotice(null), 4000);
+    }
+  };
 
   const handleCopyWebhook = () => {
     navigator.clipboard.writeText(webhookUrl);
@@ -182,7 +198,9 @@ export const DeploymentsView: React.FC<Props> = ({
         ) : (
           <div className="divide-y divide-slate-800/60">
             {deployments.map((dep) => {
-              const cleanPath = `/var/www/${dep.appName.toLowerCase().replace(/\s+/g, '-')}`;
+              const cleanAppName = dep.appName.toLowerCase().replace(/\s+/g, '-');
+              const targetHost = dep.serverHost || dep.server?.hostname || '127.0.0.1';
+              const webUrl = `http://${targetHost}/`;
 
               return (
                 <div key={dep.id} className="p-6 space-y-3 hover:bg-slate-800/20 transition">
@@ -190,11 +208,11 @@ export const DeploymentsView: React.FC<Props> = ({
                     <div className="flex items-center space-x-3">
                       <span className="font-bold text-white text-base">{dep.appName}</span>
                       <span className="text-xs font-mono text-slate-400 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
-                        {dep.server?.name || 'Server'}
+                        {dep.server?.name || 'Server'} ({targetHost})
                       </span>
                       <span
                         className={`text-xs px-2.5 py-0.5 rounded-full font-semibold ${
-                          dep.status === 'running' || dep.status === 'completed'
+                          dep.status === 'active' || dep.status === 'completed' || dep.status === 'running'
                             ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                             : dep.status === 'failed'
                             ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
@@ -209,6 +227,27 @@ export const DeploymentsView: React.FC<Props> = ({
                       <div className="text-xs text-slate-500 font-mono pr-2 hidden md:block">
                         Commit: {dep.commitSha} • {new Date(dep.createdAt).toLocaleString()}
                       </div>
+
+                      <a
+                        href={webUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition"
+                        title="Open deployed website in browser"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                        <span>Open Website</span>
+                      </a>
+
+                      <button
+                        onClick={() => handleRollback(dep)}
+                        disabled={rollingBackId === dep.id}
+                        className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-amber-400 rounded-lg text-xs font-medium flex items-center space-x-1 border border-slate-700 transition disabled:opacity-50"
+                        title="Rollback to previous release"
+                      >
+                        <RotateCcw className={`h-3 w-3 ${rollingBackId === dep.id ? 'animate-spin' : ''}`} />
+                        <span>Rollback</span>
+                      </button>
 
                       <button
                         onClick={() => startEdit(dep)}
@@ -247,8 +286,14 @@ export const DeploymentsView: React.FC<Props> = ({
 
                     <div className="text-slate-300 font-mono flex items-center space-x-1.5 bg-slate-950 px-2.5 py-1 rounded border border-slate-800">
                       <Folder className="h-3.5 w-3.5 text-amber-400" />
-                      <span className="text-slate-400">Path:</span>
-                      <span className="text-emerald-400 font-semibold">{cleanPath}</span>
+                      <span className="text-slate-400">Release:</span>
+                      <span className="text-emerald-400 font-semibold">/var/www/nexus/deployments/{cleanAppName}/current</span>
+                    </div>
+
+                    <div className="text-slate-300 font-mono flex items-center space-x-1.5 bg-slate-950 px-2.5 py-1 rounded border border-slate-800">
+                      <Folder className="h-3.5 w-3.5 text-cyan-400" />
+                      <span className="text-slate-400">Nginx Root:</span>
+                      <span className="text-cyan-400 font-semibold">/var/www/html/</span>
                     </div>
                   </div>
 

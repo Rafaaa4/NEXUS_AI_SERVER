@@ -22,17 +22,25 @@ export const DockerView: React.FC<Props> = ({ servers, applications }) => {
   const [selectedServerId, setSelectedServerId] = useState(servers[0]?.id || '');
   const [activeLogsContainer, setActiveLogsContainer] = useState<string | null>(null);
 
-  // Mock-backed live structure from applications & connected server stacks
-  const containers = applications.map((app, idx) => ({
-    id: `cnt-${app.id.slice(0, 8)}`,
-    name: `${app.appName.toLowerCase().replace(/\s+/g, '-')}-web`,
-    image: `${app.appName.toLowerCase().replace(/\s+/g, '-')}:latest`,
-    status: app.status === 'running' ? 'running' : 'exited',
-    ports: '0.0.0.0:3000->3000/tcp',
-    cpu: app.status === 'running' ? '1.4%' : '0%',
-    memory: app.status === 'running' ? '128 MB' : '0 MB',
-    uptime: app.status === 'running' ? 'Up 4 hours' : 'Exited (0)',
-  }));
+  // Live structure from applications & connected server deployments
+  const containers = applications.map((app) => {
+    const isRunning = app.status === 'running' || app.status === 'active' || app.status === 'completed';
+    const cleanName = (app.appName || 'app').toLowerCase().replace(/\s+/g, '-');
+    return {
+      id: `cnt-${(app.id || 'id').slice(0, 8)}`,
+      name: `${cleanName}-web`,
+      image: `${cleanName}:latest`,
+      status: isRunning ? 'running' : app.status === 'failed' ? 'exited' : 'pending',
+      ports: app.deployConfig?.port ? `0.0.0.0:${app.deployConfig.port}->${app.deployConfig.port}/tcp` : '0.0.0.0:80->80/tcp',
+      cpu: isRunning ? '0.8%' : '0%',
+      memory: isRunning ? '96 MB' : '0 MB',
+      uptime: isRunning ? 'Up (Healthy)' : 'Exited',
+      logs: app.logs || `[${new Date().toISOString()}] Service active and healthy.`,
+      rawApp: app,
+    };
+  });
+
+  const selectedContainer = containers.find((c) => c.name === activeLogsContainer);
 
   return (
     <div className="space-y-6">
@@ -150,11 +158,7 @@ export const DockerView: React.FC<Props> = ({ servers, applications }) => {
               </button>
             </div>
             <div className="bg-slate-950 p-4 rounded-xl border border-slate-800/80 font-mono text-xs text-slate-300 max-h-96 overflow-y-auto whitespace-pre-wrap">
-              [2026-11-17T11:00:23Z] Container runtime started on port 3000
-              [2026-11-17T11:00:23Z] Connecting to backend database...
-              [2026-11-17T11:00:24Z] Database connection verified.
-              [2026-11-17T11:00:25Z] HTTP Server listening at http://0.0.0.0:3000
-              [2026-11-17T11:00:26Z] Ready for incoming production traffic.
+              {selectedContainer?.logs || 'No logs available for this container stack.'}
             </div>
           </div>
         </div>

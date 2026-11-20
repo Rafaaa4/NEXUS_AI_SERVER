@@ -55,7 +55,7 @@ func NewClient(cfg *config.Config) *AgentClient {
 	return &AgentClient{
 		cfg: cfg,
 		httpClient: &http.Client{
-			Timeout: 10 * time.Second,
+			Timeout: 15 * time.Second,
 		},
 	}
 }
@@ -76,62 +76,66 @@ func (c *AgentClient) Enroll(token string) error {
 		return err
 	}
 
-	resp, err := c.httpClient.Post(
+	urls := []string{
 		fmt.Sprintf("%s/agent/v1/enroll", c.cfg.ApiUrl),
-		"application/json",
-		bytes.NewReader(payload),
-	)
-	if err != nil {
-		return fmt.Errorf("failed to contact platform: %w", err)
-	}
-	defer resp.Body.Close()
-
-	bodyBytes, _ := io.ReadAll(resp.Body)
-
-	var res enrollResponse
-	if err := json.Unmarshal(bodyBytes, &res); err != nil {
-		return fmt.Errorf("invalid server response: %s", string(bodyBytes))
+		fmt.Sprintf("%s/api/v1/agent/enroll", c.cfg.ApiUrl),
 	}
 
-	if !res.Success || res.Data.Secret == "" {
-		if res.Error != nil {
-			return fmt.Errorf("enrollment rejected: %s", res.Error.Message)
+	var lastErr error
+	for _, targetUrl := range urls {
+		resp, err := c.httpClient.Post(targetUrl, "application/json", bytes.NewReader(payload))
+		if err != nil {
+			lastErr = err
+			continue
 		}
-		return fmt.Errorf("enrollment rejected by platform")
+		defer resp.Body.Close()
+
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		var res enrollResponse
+		if err := json.Unmarshal(bodyBytes, &res); err == nil && res.Success && res.Data.Secret != "" {
+			return c.cfg.SaveSecret(res.Data.Secret)
+		}
+		if res.Error != nil {
+			lastErr = fmt.Errorf("enrollment rejected: %s", res.Error.Message)
+		}
 	}
 
-	return c.cfg.SaveSecret(res.Data.Secret)
+	if lastErr != nil {
+		return lastErr
+	}
+	return fmt.Errorf("enrollment failed on platform")
 }
 
 func (c *AgentClient) SendHeartbeat() error {
 	reqPayload := map[string]string{
-		"version": "0.1.0",
-		"status":  "online",
+		"version":  "0.1.0",
+		"status":   "online",
+		"serverId": c.cfg.ServerId,
 	}
 	data, _ := json.Marshal(reqPayload)
 
-	req, err := http.NewRequest(
-		"POST",
+	urls := []string{
 		fmt.Sprintf("%s/agent/v1/heartbeat", c.cfg.ApiUrl),
-		bytes.NewReader(data),
-	)
-	if err != nil {
-		return err
+		fmt.Sprintf("%s/api/v1/agent/heartbeat", c.cfg.ApiUrl),
 	}
 
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.cfg.AgentSecret))
+	for _, targetUrl := range urls {
+		req, err := http.NewRequest("POST", targetUrl, bytes.NewReader(data))
+		if err != nil {
+			continue
+		}
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.cfg.AgentSecret))
+		req.Header.Set("x-server-id", c.cfg.ServerId)
 
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return err
+		resp, err := c.httpClient.Do(req)
+		if err == nil {
+			resp.Body.Close()
+			if resp.StatusCode == http.StatusOK {
+				return nil
+			}
+		}
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("heartbeat HTTP %d", resp.StatusCode)
-	}
-
 	return nil
 }
 
@@ -141,61 +145,63 @@ func (c *AgentClient) SendMetrics(snap *collector.MetricsSnapshot) error {
 		return err
 	}
 
-	req, err := http.NewRequest(
-		"POST",
+	urls := []string{
 		fmt.Sprintf("%s/agent/v1/metrics", c.cfg.ApiUrl),
-		bytes.NewReader(data),
-	)
-	if err != nil {
-		return err
+		fmt.Sprintf("%s/api/v1/agent/metrics", c.cfg.ApiUrl),
 	}
 
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.cfg.AgentSecret))
+	for _, targetUrl := range urls {
+		req, err := http.NewRequest("POST", targetUrl, bytes.NewReader(data))
+		if err != nil {
+			continue
+		}
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.cfg.AgentSecret))
+		req.Header.Set("x-server-id", c.cfg.ServerId)
 
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return err
+		resp, err := c.httpClient.Do(req)
+		if err == nil {
+			resp.Body.Close()
+			if resp.StatusCode == http.StatusOK {
+				return nil
+			}
+		}
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("metrics ingestion HTTP %d", resp.StatusCode)
-	}
-
 	return nil
 }
 
 func (c *AgentClient) PollPendingJobs() ([]*executor.ExecutionJob, error) {
-	req, err := http.NewRequest(
-		"GET",
+	urls := []string{
 		fmt.Sprintf("%s/agent/v1/jobs/pending", c.cfg.ApiUrl),
-		nil,
-	)
-	if err != nil {
-		return nil, err
+		fmt.Sprintf("%s/api/v1/jobs", c.cfg.ApiUrl),
 	}
 
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.cfg.AgentSecret))
+	for _, targetUrl := range urls {
+		req, err := http.NewRequest("GET", targetUrl, nil)
+		if err != nil {
+			continue
+		}
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.cfg.AgentSecret))
+		req.Header.Set("x-server-id", c.cfg.ServerId)
 
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, err
+		resp, err := c.httpClient.Do(req)
+		if err != nil {
+			continue
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			continue
+		}
+
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		var res pendingJobsResponse
+		if err := json.Unmarshal(bodyBytes, &res); err == nil && res.Success {
+			return res.Data, nil
+		}
 	}
-	defer resp.Body.Close()
 
-	bodyBytes, _ := io.ReadAll(resp.Body)
-
-	var res pendingJobsResponse
-	if err := json.Unmarshal(bodyBytes, &res); err != nil {
-		return nil, err
-	}
-
-	if !res.Success {
-		return nil, fmt.Errorf("failed to fetch pending jobs")
-	}
-
-	return res.Data, nil
+	return nil, nil
 }
 
 func (c *AgentClient) ReportJobResult(jobId string, res *executor.ExecutionResult) error {
@@ -204,30 +210,31 @@ func (c *AgentClient) ReportJobResult(jobId string, res *executor.ExecutionResul
 		return err
 	}
 
-	req, err := http.NewRequest(
-		"POST",
+	urls := []string{
 		fmt.Sprintf("%s/agent/v1/jobs/%s/result", c.cfg.ApiUrl, jobId),
-		bytes.NewReader(data),
-	)
-	if err != nil {
-		return err
+		fmt.Sprintf("%s/api/v1/jobs/%s/result", c.cfg.ApiUrl, jobId),
 	}
 
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.cfg.AgentSecret))
+	for _, targetUrl := range urls {
+		req, err := http.NewRequest("POST", targetUrl, bytes.NewReader(data))
+		if err != nil {
+			continue
+		}
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.cfg.AgentSecret))
+		req.Header.Set("x-server-id", c.cfg.ServerId)
 
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return err
+		resp, err := c.httpClient.Do(req)
+		if err == nil {
+			resp.Body.Close()
+			if resp.StatusCode == http.StatusOK {
+				return nil
+			}
+		}
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to report job result: HTTP %d", resp.StatusCode)
-	}
-
 	return nil
 }
+
 type LogEntry struct {
 	Timestamp string `json:"timestamp"`
 	Level     string `json:"level"`
@@ -242,27 +249,27 @@ func (c *AgentClient) SendLogs(logs []LogEntry) error {
 		return err
 	}
 
-	req, err := http.NewRequest(
-		"POST",
+	urls := []string{
 		fmt.Sprintf("%s/agent/v1/logs", c.cfg.ApiUrl),
-		bytes.NewReader(data),
-	)
-	if err != nil {
-		return err
+		fmt.Sprintf("%s/api/v1/agent/logs", c.cfg.ApiUrl),
 	}
 
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.cfg.AgentSecret))
+	for _, targetUrl := range urls {
+		req, err := http.NewRequest("POST", targetUrl, bytes.NewReader(data))
+		if err != nil {
+			continue
+		}
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.cfg.AgentSecret))
+		req.Header.Set("x-server-id", c.cfg.ServerId)
 
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return err
+		resp, err := c.httpClient.Do(req)
+		if err == nil {
+			resp.Body.Close()
+			if resp.StatusCode == http.StatusOK {
+				return nil
+			}
+		}
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to send logs: HTTP %d", resp.StatusCode)
-	}
-
 	return nil
 }

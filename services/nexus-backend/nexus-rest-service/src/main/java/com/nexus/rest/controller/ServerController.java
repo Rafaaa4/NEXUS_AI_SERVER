@@ -1,5 +1,6 @@
 package com.nexus.rest.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nexus.common.entity.AgentEntity;
 import com.nexus.common.entity.JobEntity;
 import com.nexus.common.entity.ServerEntity;
@@ -23,6 +24,7 @@ public class ServerController {
     private final AgentRepository agentRepository;
     private final JobRepository jobRepository;
     private final ManagedDatabaseRepository managedDatabaseRepository;
+    private final ObjectMapper objectMapper;
 
     public ServerController(ServerRepository serverRepository,
                             AgentRepository agentRepository,
@@ -32,6 +34,7 @@ public class ServerController {
         this.agentRepository = agentRepository;
         this.jobRepository = jobRepository;
         this.managedDatabaseRepository = managedDatabaseRepository;
+        this.objectMapper = new ObjectMapper();
     }
 
     public record CreateServerRequest(String name, String hostname, String provider) {}
@@ -192,10 +195,56 @@ public class ServerController {
         return ResponseEntity.ok(Map.of("success", true, "data", sampleLogs));
     }
 
+    @PostMapping("/{id}/run-command")
+    public ResponseEntity<?> runServerCommand(@PathVariable UUID id,
+                                              @RequestHeader(value = "x-organization-id", required = false) String orgHeader,
+                                              @RequestBody Map<String, String> body) {
+        UUID orgId = orgHeader != null && !orgHeader.isEmpty() ? UUID.fromString(orgHeader) : UUID.fromString("1ab47797-365b-45a8-80aa-4692d020134f");
+        String command = body.get("command");
+        if (command == null || command.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", Map.of("message", "command is required")));
+        }
+
+        JobEntity job = new JobEntity();
+        job.setOrganizationId(orgId);
+        job.setServerId(id);
+        job.setJobType("system.run_command");
+        job.setStatus("queued");
+        job.setCreatedAt(OffsetDateTime.now());
+
+        Map<String, Object> params = Map.of("command", command);
+        try {
+            job.setParameters(objectMapper.writeValueAsString(params));
+        } catch (Exception ignored) {}
+        jobRepository.save(job);
+
+        return ResponseEntity.ok(Map.of(
+            "success", true,
+            "data", Map.of(
+                "jobId", job.getId().toString(),
+                "message", "Command dispatched to server agent"
+            )
+        ));
+    }
+
     @GetMapping("/jobs/{jobId}")
     public ResponseEntity<?> getJobStatus(@PathVariable UUID jobId) {
-        return jobRepository.findById(jobId)
-            .map(job -> ResponseEntity.ok(Map.of("success", true, "data", job)))
-            .orElseGet(() -> ResponseEntity.ok(Map.of("success", true, "data", Map.of("id", jobId, "status", "completed"))));
+        return jobRepository.findById(jobId).map(job -> {
+            Map<String, Object> res = new HashMap<>();
+            res.put("id", job.getId().toString());
+            res.put("status", job.getStatus());
+            res.put("jobType", job.getJobType());
+            res.put("serverId", job.getServerId().toString());
+            if (job.getResult() != null && !job.getResult().isEmpty()) {
+                try {
+                    res.put("result", objectMapper.readValue(job.getResult(), Map.class));
+                } catch (Exception e) {
+                    res.put("result", Map.of("output", job.getResult()));
+                }
+            } else {
+                res.put("result", Map.of());
+            }
+            return ResponseEntity.ok(Map.of("success", true, "data", res));
+        }).orElseGet(() -> ResponseEntity.ok(Map.of("success", true, "data", Map.of("id", jobId.toString(), "status", "completed"))));
     }
 }

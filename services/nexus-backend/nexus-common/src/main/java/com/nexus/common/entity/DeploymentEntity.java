@@ -1,6 +1,8 @@
 package com.nexus.common.entity;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
@@ -36,6 +38,7 @@ public class DeploymentEntity {
     @Column(name = "status", nullable = false, length = 30)
     private String status = "pending";
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "deploy_config", columnDefinition = "jsonb")
     private String deployConfig;
 

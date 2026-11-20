@@ -434,6 +434,12 @@ class ApiService {
     });
   }
 
+  async rollbackDeployment(id: string) {
+    return this.request<{ success: boolean; job: any }>(`/deployments/${id}/rollback`, {
+      method: 'POST',
+    });
+  }
+
   // Audit Logs
   async listAuditLogs(limit: number = 50) {
     return this.request<{
